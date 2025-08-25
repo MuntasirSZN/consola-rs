@@ -1,6 +1,7 @@
 # consola-rs Task Breakdown (Rust + WASM Port of @unjs/consola)
 
 Purpose: Implement a Rust library offering feature parity with @unjs/consola (logging types, formatting, reporters, throttling, pause/resume, raw logs, mocking, tree/box, error formatting) with:
+
 - Native Rust target.
 - Optional WASM (browser) target (NO interactive prompts there, just an error warning if prompt methods are used).
 - Native interactive prompts powered by the `demand` crate (see https://docs.rs/demand).
@@ -8,7 +9,7 @@ Purpose: Implement a Rust library offering feature parity with @unjs/consola (lo
 - Optional integrations with `log` and `tracing` ecosystems (feature-gated).
 
 No npm package. WASM usage documented (user compiles).  
-This file is the authoritative actionable task list.  
+This file is the authoritative actionable task list.
 
 ---
 
@@ -57,7 +58,8 @@ This file is the authoritative actionable task list.
 12. [x] Registration API `register_type(name, spec)` (duplicate overwrite doc).
 13. [x] Map types → numeric level via table.
 14. [ ] Level filter normalization (user sets global level).
-🧪 Tests:
+        🧪 Tests:
+
 - [ ] Level ordering & filter.
 - [ ] Default type mapping parity.
 - [ ] Custom type registration.
@@ -71,7 +73,8 @@ This file is the authoritative actionable task list.
 17. [ ] Normalization: object vs primitive vs error (mimic JS flexible call forms).
 18. [ ] Merge defaults (tag, additional, meta).
 19. [ ] JSON serialization (feature "json").
-🧪 Tests:
+        🧪 Tests:
+
 - [ ] Primitive + error mix.
 - [ ] Default merge precedence.
 - [ ] JSON output attributes ordering (snapshot).
@@ -86,7 +89,8 @@ This file is the authoritative actionable task list.
 23. [ ] Repetition flush triggers: new fingerprint, window expire (timer), flush(), pause(), drop.
 24. [ ] Suffix formatting rules (basic: " (xN)", fancy: dim "(xN)", json: repeat field).
 25. [ ] Clock abstraction (MockClock for tests).
-🧪 Tests:
+        🧪 Tests:
+
 - [ ] Coalesce below vs at threshold.
 - [ ] Window expiry flush.
 - [ ] Manual flush releases suppressed.
@@ -101,7 +105,8 @@ This file is the authoritative actionable task list.
 28. [ ] resume(): flush suppressed group, drain queue sequentially.
 29. [ ] Optional queue capacity (⚠ decide: default unlimited, config limit).
 30. [ ] flush() public API.
-🧪 Tests:
+        🧪 Tests:
+
 - [ ] Order preservation.
 - [ ] Throttle boundary reset on resume.
 - [ ] Capacity overflow strategy (if implemented).
@@ -117,7 +122,8 @@ This file is the authoritative actionable task list.
 35. [ ] Column width detection (from terminal; fallback).
 36. [ ] Width calc with unicode-width; fallback char len if disabled.
 37. [ ] NO_COLOR and FORCE_COLOR env respect (anstream detection).
-🧪 Tests:
+        🧪 Tests:
+
 - [ ] Basic vs raw snapshot.
 - [ ] Width fallback when unicode feature off.
 - [ ] NO_COLOR strips style.
@@ -133,7 +139,8 @@ This file is the authoritative actionable task list.
 42. [ ] Error stack parser (cwd + file:// removal).
 43. [ ] Color/style helpers wrapping anstyle (avoid direct codes).
 44. [ ] Stream sinks (StdoutSink, StderrSink, TestSink).
-🧪 Tests:
+        🧪 Tests:
+
 - [ ] Tree snapshot depth limit.
 - [ ] Box styles (unicode vs fallback).
 - [ ] Error stack parse (trimming).
@@ -147,7 +154,8 @@ This file is the authoritative actionable task list.
 46. [ ] Error formatting (stack indentation).
 47. [ ] stderr for levels < 2 else stdout.
 48. [ ] Include date when enabled.
-🧪 Tests:
+        🧪 Tests:
+
 - [ ] Single line formatting snapshot.
 - [ ] Box log multi-line.
 - [ ] Error with cause chain (basic variant).
@@ -163,7 +171,8 @@ This file is the authoritative actionable task list.
 53. [ ] Integration with Box (colored frame).
 54. [ ] Repetition suffix dim style.
 55. [ ] Downgrade gracefully if colors disabled.
-🧪 Tests:
+        🧪 Tests:
+
 - [ ] Fancy colored snapshot (strip_ansi for compare).
 - [ ] Unicode fallback snapshot.
 - [ ] repetition count formatting.
@@ -177,7 +186,8 @@ This file is the authoritative actionable task list.
 58. [ ] Error chain structured array (causes).
 59. [ ] Deterministic key order.
 60. [ ] Option disable time (FormatOptions.date=false).
-🧪 Tests:
+        🧪 Tests:
+
 - [ ] Snapshot basic record.
 - [ ] With repetition.
 - [ ] Error chain serialization.
@@ -191,7 +201,8 @@ This file is the authoritative actionable task list.
 63. [ ] Format nested causes with `[cause]:`.
 64. [ ] Multi-line message normalization (indent continuation).
 65. [ ] Provide structured error data to JSON reporter.
-🧪 Tests:
+        🧪 Tests:
+
 - [ ] Depth limiting.
 - [ ] Cycle detection.
 - [ ] Multi-level nested output.
@@ -207,7 +218,8 @@ This file is the authoritative actionable task list.
 70. [ ] Cancellation mapping (demand interruption → strategy).
 71. [ ] WASM runtime guard: calling prompt returns Err + logs console error (no interactive).
 72. [ ] Provide builder `.with_prompt_provider(DefaultDemandPrompt)` only when feature active.
-🧪 Tests:
+        🧪 Tests:
+
 - [ ] Cancellation strategy behavior.
 - [ ] Default fallback path.
 - [ ] WASM (compiled) prompt stub returns error (wasm test skip interactive).
@@ -216,14 +228,15 @@ This file is the authoritative actionable task list.
 
 ## 12. WASM Integration (feature "wasm")
 
-73. [ ] Export create_logger / free_logger / log_* / set_level / pause / resume via wasm-bindgen.
+73. [ ] Export create*logger / free_logger / log*\* / set_level / pause / resume via wasm-bindgen.
 74. [ ] JS shim example for variadic args & Error bridging.
 75. [ ] Error bridging: stack + message + one-level cause (JSON if needed).
 76. [ ] Provide fast path function `log_simple(type, &str)` for performance.
 77. [ ] Document build instructions (`wasm-pack build --target web`).
 78. [ ] Ensure prompt provider not compiled (no demand dependency) in wasm-only build.
 79. [ ] Logging color detection for browsers (maybe skip; always enable?) (⚠ doc).
-🧪 Tests (wasm-bindgen-test):
+        🧪 Tests (wasm-bindgen-test):
+
 - [ ] Basic log works.
 - [ ] Fancy reporter formatting (if feature toggled).
 - [ ] Prompt call returns error.
@@ -232,10 +245,11 @@ This file is the authoritative actionable task list.
 
 ## 13. Raw Logging Path
 
-80. [ ] Per-type *_raw() methods + generic log_type_raw().
+80. [ ] Per-type \*\_raw() methods + generic log_type_raw().
 81. [ ] Raw path still subject to level filter & throttle.
 82. [ ] Fingerprint strategy same as formatted (document).
-🧪 Tests:
+        🧪 Tests:
+
 - [ ] Raw output minimal.
 - [ ] Raw repetition aggregated.
 
@@ -247,7 +261,8 @@ This file is the authoritative actionable task list.
 84. [ ] clear_mock().
 85. [ ] MemoryReporter capturing full records.
 86. [ ] MockClock injection for deterministic timestamps.
-🧪 Tests:
+        🧪 Tests:
+
 - [ ] Mock intercept order.
 - [ ] Deterministic timestamp snapshots.
 
@@ -260,7 +275,8 @@ This file is the authoritative actionable task list.
 89. [ ] Precedence: builder > env > defaults.
 90. [ ] Option force_simple_width bool.
 91. [ ] Document unstable feature toggles (async-reporters etc).
-🧪 Tests:
+        🧪 Tests:
+
 - [ ] Env overrides.
 - [ ] NO_COLOR disables styling.
 - [ ] force_simple_width effect.
@@ -277,7 +293,8 @@ This file is the authoritative actionable task list.
 97. [ ] Span stack optional (config) show `[span1/span2]` prefix (🐢 maybe).
 98. [ ] Feature flags: "bridge-log", "bridge-tracing".
 99. [ ] Document fingerprint inclusion of meta fields (toggle? ⚠).
-🧪 Tests:
+        🧪 Tests:
+
 - [ ] log crate bridge basic.
 - [ ] tracing event field capture.
 - [ ] Recursion safety.
@@ -291,7 +308,8 @@ This file is the authoritative actionable task list.
 102. [ ] Raw macros info_raw! etc.
 103. [ ] log_type!(logger, "custom", ...).
 104. [ ] Ensure macros avoid format cost if filtered (level guard).
-🧪 Tests:
+         🧪 Tests:
+
 - [ ] Compile-time macro checks.
 - [ ] Filtered-out macro short-circuits.
 
@@ -305,7 +323,8 @@ This file is the authoritative actionable task list.
 108. [ ] smallvec size tuning (segments typical count).
 109. [ ] Preallocate String capacities (common line length).
 110. [ ] Document results in BENCHMARKS.md.
-🧪 Bench:
+         🧪 Bench:
+
 - [ ] Baseline println! vs basic info.
 - [ ] Throttled spam scenario memory.
 
@@ -407,7 +426,7 @@ Milestone 6 Prompt & WASM: 66–72, 73–79.
 Milestone 7 Integrations: 92–99.  
 Milestone 8 Macros & Performance: 100–110.  
 Milestone 9 Tests & Docs: 111–131.  
-Milestone 10 CI & Release: 132–147.  
+Milestone 10 CI & Release: 132–147.
 
 ---
 

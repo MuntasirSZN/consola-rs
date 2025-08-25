@@ -1,0 +1,322 @@
+//! consola-rs core library (stages 0-3 groundwork)
+
+use blake3::Hasher;
+use once_cell::sync::Lazy;
+use std::fmt;
+use std::sync::RwLock;
+use std::time::{Duration, Instant};
+
+// ---------------- Levels & Types (Stage 1) ----------------
+
+/// Sentinel / numeric log levels.
+/// Ordering: lower is more severe.
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct LogLevel(pub i16);
+
+impl LogLevel {
+    pub const SILENT: LogLevel = LogLevel(-99);
+    pub const FATAL: LogLevel = LogLevel(0);
+    pub const ERROR: LogLevel = LogLevel(1);
+    pub const WARN: LogLevel = LogLevel(2);
+    pub const LOG: LogLevel = LogLevel(3);
+    pub const INFO: LogLevel = LogLevel(4);
+    pub const SUCCESS: LogLevel = LogLevel(5);
+    pub const DEBUG: LogLevel = LogLevel(6);
+    pub const TRACE: LogLevel = LogLevel(7);
+    pub const VERBOSE: LogLevel = LogLevel(99);
+}
+
+/// Specification for a log type.
+#[derive(Debug, Clone)]
+pub struct LogTypeSpec {
+    pub level: LogLevel,
+}
+
+static TYPE_REGISTRY: Lazy<RwLock<Vec<(String, LogTypeSpec)>>> = Lazy::new(|| {
+    let mut v = Vec::new();
+    // default mapping parity attempt
+    for (name, level) in [
+        ("silent", LogLevel::SILENT),
+        ("fatal", LogLevel::FATAL),
+        ("error", LogLevel::ERROR),
+        ("warn", LogLevel::WARN),
+        ("log", LogLevel::LOG),
+        ("info", LogLevel::INFO),
+        ("success", LogLevel::SUCCESS),
+        ("fail", LogLevel::SUCCESS), // alias to success level for now
+        ("ready", LogLevel::INFO),
+        ("start", LogLevel::LOG),
+        ("box", LogLevel::LOG),
+        ("debug", LogLevel::DEBUG),
+        ("trace", LogLevel::TRACE),
+        ("verbose", LogLevel::VERBOSE),
+    ] {
+        v.push((name.to_string(), LogTypeSpec { level }));
+    }
+    RwLock::new(v)
+});
+
+/// Register or overwrite a log type.
+pub fn register_type(name: &str, spec: LogTypeSpec) {
+    let mut guard = TYPE_REGISTRY.write().unwrap();
+    if let Some(existing) = guard.iter_mut().find(|(n, _)| n == name) {
+        *existing = (name.to_string(), spec);
+    } else {
+        guard.push((name.to_string(), spec));
+    }
+}
+
+pub fn level_for_type(name: &str) -> Option<LogLevel> {
+    let guard = TYPE_REGISTRY.read().unwrap();
+    guard.iter().find(|(n, _)| n == name).map(|(_, s)| s.level)
+}
+
+// --------------- Record & Argument Handling (Stage 2) ---------------
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ArgValue {
+    String(String),
+    Number(f64),
+    Bool(bool),
+    Error(String), // placeholder; later structured chain
+    OtherDebug(String),
+}
+
+impl From<&str> for ArgValue {
+    fn from(s: &str) -> Self {
+        ArgValue::String(s.to_string())
+    }
+}
+impl From<String> for ArgValue {
+    fn from(s: String) -> Self {
+        ArgValue::String(s)
+    }
+}
+impl From<bool> for ArgValue {
+    fn from(b: bool) -> Self {
+        ArgValue::Bool(b)
+    }
+}
+impl From<f64> for ArgValue {
+    fn from(n: f64) -> Self {
+        ArgValue::Number(n)
+    }
+}
+impl From<i64> for ArgValue {
+    fn from(n: i64) -> Self {
+        ArgValue::Number(n as f64)
+    }
+}
+impl From<u64> for ArgValue {
+    fn from(n: u64) -> Self {
+        ArgValue::Number(n as f64)
+    }
+}
+
+impl fmt::Display for ArgValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ArgValue::String(s) => write!(f, "{}", s),
+            ArgValue::Number(n) => write!(f, "{}", n),
+            ArgValue::Bool(b) => write!(f, "{}", b),
+            ArgValue::Error(e) => write!(f, "{}", e),
+            ArgValue::OtherDebug(d) => write!(f, "{}", d),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct LogRecord {
+    pub timestamp: Instant,
+    pub level: LogLevel,
+    pub type_name: String,
+    pub tag: Option<String>,
+    pub args: Vec<ArgValue>,
+    pub message: Option<String>,
+    pub repetition_count: u32,
+}
+
+impl LogRecord {
+    pub fn new(type_name: &str, tag: Option<String>, args: Vec<ArgValue>) -> Self {
+        let level = level_for_type(type_name).unwrap_or(LogLevel::LOG);
+        let message = build_message(&args);
+        Self {
+            timestamp: Instant::now(),
+            level,
+            type_name: type_name.to_string(),
+            tag,
+            args,
+            message,
+            repetition_count: 0,
+        }
+    }
+}
+
+fn build_message(args: &[ArgValue]) -> Option<String> {
+    if args.is_empty() {
+        return None;
+    }
+    let mut out = String::new();
+    for (i, a) in args.iter().enumerate() {
+        if i > 0 {
+            out.push(' ');
+        }
+        out.push_str(&a.to_string());
+    }
+    Some(out)
+}
+
+// --------------- Throttling Skeleton (Stage 3) ---------------
+
+#[derive(Debug, Clone)]
+pub struct ThrottleConfig {
+    pub window: Duration,
+    pub min_count: u32,
+}
+impl Default for ThrottleConfig {
+    fn default() -> Self {
+        Self {
+            window: Duration::from_millis(500),
+            min_count: 2,
+        }
+    }
+}
+
+#[derive(Debug)]
+struct ThrottleState {
+    current_fp: Option<[u8; 32]>,
+    first_time: Option<Instant>,
+    count: u32,
+}
+
+impl ThrottleState {
+    fn new() -> Self {
+        Self {
+            current_fp: None,
+            first_time: None,
+            count: 0,
+        }
+    }
+    fn reset(&mut self) {
+        self.current_fp = None;
+        self.first_time = None;
+        self.count = 0;
+    }
+}
+
+pub struct Throttler {
+    cfg: ThrottleConfig,
+    state: ThrottleState,
+}
+
+impl Throttler {
+    pub fn new(cfg: ThrottleConfig) -> Self {
+        Self {
+            cfg,
+            state: ThrottleState::new(),
+        }
+    }
+
+    pub fn fingerprint(record: &LogRecord) -> [u8; 32] {
+        let mut hasher = Hasher::new();
+        hasher.update(record.type_name.as_bytes());
+        if let Some(tag) = &record.tag {
+            hasher.update(tag.as_bytes());
+        }
+        hasher.update(&record.level.0.to_le_bytes());
+        if let Some(msg) = &record.message {
+            hasher.update(msg.as_bytes());
+        }
+        for a in &record.args {
+            hasher.update(format!("{:?}", a).as_bytes());
+        }
+        *hasher.finalize().as_bytes()
+    }
+
+    /// Returns (emit_now, repetition_count_if_any)
+    pub fn on_record(&mut self, record: &mut LogRecord) -> (bool, u32) {
+        let fp = Self::fingerprint(record);
+        let now = record.timestamp;
+        match self.state.current_fp {
+            Some(current) if current == fp => {
+                // same fingerprint
+                if let Some(first) = self.state.first_time {
+                    if now.duration_since(first) <= self.cfg.window {
+                        self.state.count += 1;
+                        record.repetition_count = self.state.count;
+                        if self.state.count < self.cfg.min_count {
+                            return (false, self.state.count);
+                        } else {
+                            return (true, self.state.count);
+                        }
+                    }
+                }
+                // window expired
+                self.state.reset();
+            }
+            _ => {
+                // new fingerprint flush previous implicit (not handled yet)
+            }
+        }
+        // initialize new fingerprint
+        self.state.current_fp = Some(fp);
+        self.state.first_time = Some(now);
+        self.state.count = 1;
+        record.repetition_count = 1;
+        (true, 1)
+    }
+}
+
+// --------------- Tests (basic) ---------------
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn level_ordering() {
+        assert!(LogLevel::FATAL < LogLevel::ERROR);
+        assert!(LogLevel::TRACE < LogLevel::VERBOSE);
+        assert!(LogLevel::SILENT < LogLevel::FATAL);
+    }
+
+    #[test]
+    fn default_type_mapping() {
+        assert_eq!(level_for_type("info"), Some(LogLevel::INFO));
+        assert_eq!(level_for_type("trace"), Some(LogLevel::TRACE));
+        assert_eq!(level_for_type("verbose"), Some(LogLevel::VERBOSE));
+    }
+
+    #[test]
+    fn custom_type_registration() {
+        register_type(
+            "custom",
+            LogTypeSpec {
+                level: LogLevel(42),
+            },
+        );
+        assert_eq!(level_for_type("custom"), Some(LogLevel(42)));
+    }
+
+    #[test]
+    fn record_message_building() {
+        let r = LogRecord::new("info", None, vec!["hello".into(), 5i64.into(), true.into()]);
+        assert_eq!(r.message.as_deref(), Some("hello 5 true"));
+    }
+
+    #[test]
+    fn throttle_basic() {
+        let mut throttler = Throttler::new(ThrottleConfig {
+            window: Duration::from_millis(200),
+            min_count: 3,
+        });
+        let mut r1 = LogRecord::new("info", None, vec!["x".into()]);
+        assert!(throttler.on_record(&mut r1).0); // first emits
+        let mut r2 = LogRecord::new("info", None, vec!["x".into()]);
+        let emit2 = throttler.on_record(&mut r2); // should suppress because count=2 < min(3)
+        assert!(!emit2.0);
+        let mut r3 = LogRecord::new("info", None, vec!["x".into()]);
+        let emit3 = throttler.on_record(&mut r3); // third should emit aggregated
+        assert!(emit3.0);
+        assert_eq!(r3.repetition_count, 3);
+    }
+}

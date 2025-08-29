@@ -4,7 +4,7 @@ Purpose: Implement a Rust library offering feature parity with @unjs/consola (lo
 
 - Native Rust target.
 - Optional WASM (browser) target (NO interactive prompts there, just an error warning if prompt methods are used).
-- Native interactive prompts powered by the `demand` crate (see https://docs.rs/demand).
+- Native interactive prompts powered by the `demand` crate (see <https://docs.rs/demand>).
 - Output & styling via `anstream` / `anstyle` (cross-platform, NO_COLOR aware).
 - Optional integrations with `log` and `tracing` ecosystems (feature-gated).
 

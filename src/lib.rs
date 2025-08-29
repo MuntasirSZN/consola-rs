@@ -375,10 +375,9 @@ impl Throttler {
         F: FnMut(&LogRecord),
     {
         if let Some(stored) = &self.state.stored {
-            if forced
-                && (self.state.count > 1 || !self.state.emitted) {
-                    emit(stored);
-                }
+            if forced && (self.state.count > 1 || !self.state.emitted) {
+                emit(stored);
+            }
         }
         self.state.reset();
     }
@@ -608,15 +607,24 @@ mod tests {
 
     #[test]
     fn throttle_basic() {
-    let mut throttler = Throttler::new(ThrottleConfig { window: Duration::from_millis(200), min_count: 3 });
-    let mut emitted: Vec<LogRecord> = Vec::new();
-    throttler.on_record(LogRecord::new("info", None, vec!["x".into()]), |r| emitted.push(r.clone()));
-    assert_eq!(emitted.len(), 1); // first
-    throttler.on_record(LogRecord::new("info", None, vec!["x".into()]), |r| emitted.push(r.clone()));
-    assert_eq!(emitted.len(), 1); // suppressed
-    throttler.on_record(LogRecord::new("info", None, vec!["x".into()]), |r| emitted.push(r.clone()));
-    assert_eq!(emitted.len(), 2); // aggregated
-    assert_eq!(emitted[1].repetition_count, 3);
+        let mut throttler = Throttler::new(ThrottleConfig {
+            window: Duration::from_millis(200),
+            min_count: 3,
+        });
+        let mut emitted: Vec<LogRecord> = Vec::new();
+        throttler.on_record(LogRecord::new("info", None, vec!["x".into()]), |r| {
+            emitted.push(r.clone())
+        });
+        assert_eq!(emitted.len(), 1); // first
+        throttler.on_record(LogRecord::new("info", None, vec!["x".into()]), |r| {
+            emitted.push(r.clone())
+        });
+        assert_eq!(emitted.len(), 1); // suppressed
+        throttler.on_record(LogRecord::new("info", None, vec!["x".into()]), |r| {
+            emitted.push(r.clone())
+        });
+        assert_eq!(emitted.len(), 2); // aggregated
+        assert_eq!(emitted[1].repetition_count, 3);
     }
 
     #[test]

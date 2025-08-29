@@ -3,11 +3,13 @@ name = "consola"
 version = "0.0.0-alpha.0"
 edition = "2024"
 license = "MIT"
-authors = ["Consola RS Maintainers <dev@example.com>"]
-description = "Rust + WASM port of unjs/consola (work in progress)"
-repository = "https://example.com/placeholder"
+authors = ["Muntasir Mahmud <muntasir.joypurhat@gmail.com>"]
+description = "🐨 Elegant Console Logger for Rust and Browser"
+repository = "https://github.com/MuntasirSZN/consola-rs"
 keywords = ["logging", "console", "ansi", "wasm"]
 categories = ["development-tools"]
+rust-version = "1.85"
+readme = "README.md"
 
 [package.metadata]
 # Reserved for future metadata like MSRV or docs.rs config

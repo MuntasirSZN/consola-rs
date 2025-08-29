@@ -1,10 +1,89 @@
-//! consola-rs core library (stages 0-3 groundwork)
+//! consola-rs core library (stages 0-5 groundwork)
+//!
+//! Modules currently implemented:
+//! - levels/types registry
+//! - record + arg handling (basic)
+//! - throttling (basic coalescence)
+//! - logger core with pause/resume & level filtering
+//! - basic reporter (minimal formatting)
+//! - utils (strip ansi placeholder)
+//! - formatting stubs (to be expanded)
+//! - error chain extraction stub
+//!
+//! This is incremental per `tasks.md`.
 
 use blake3::Hasher;
 use once_cell::sync::Lazy;
+use std::collections::VecDeque;
 use std::fmt;
+use std::io::{self, Write};
 use std::sync::RwLock;
 use std::time::{Duration, Instant};
+
+pub mod utils {
+    /// Strip ANSI escape sequences using the `strip-ansi-escapes` crate (robust implementation).
+    pub fn strip_ansi(input: &str) -> String {
+        let bytes = strip_ansi_escapes::strip(input);
+        String::from_utf8(bytes).unwrap_or_else(|_| input.to_string())
+    }
+}
+
+pub mod error_chain {
+    use std::collections::HashSet;
+    use std::error::Error;
+
+    pub fn collect_chain(err: &(dyn Error + 'static)) -> Vec<String> {
+        let mut out = Vec::new();
+        let mut seen: HashSet<usize> = HashSet::new();
+        let mut cur: Option<&(dyn Error + 'static)> = Some(err);
+        while let Some(e) = cur {
+            // Obtain a stable address for cycle detection (cast via *const () first)
+            let ptr = (e as *const dyn std::error::Error) as *const () as usize;
+            if !seen.insert(ptr) {
+                break;
+            }
+            out.push(e.to_string());
+            cur = e.source();
+        }
+        out
+    }
+}
+
+pub mod format {
+    use super::LogRecord;
+    #[derive(Debug, Clone)]
+    pub struct FormatOptions {
+        pub date: bool,
+        pub colors: bool,
+        pub compact: bool,
+        pub columns: Option<usize>,
+        pub error_level: usize,
+        pub unicode: bool,
+    }
+    impl Default for FormatOptions {
+        fn default() -> Self {
+            Self {
+                date: true,
+                colors: true,
+                compact: false,
+                columns: None,
+                error_level: 16,
+                unicode: true,
+            }
+        }
+    }
+    #[derive(Debug, Clone)]
+    pub struct Segment {
+        pub text: String,
+    }
+    pub fn build_basic_segments(record: &LogRecord) -> Vec<Segment> {
+        let mut v = Vec::new();
+        if let Some(msg) = &record.message {
+            v.push(Segment { text: msg.clone() });
+        }
+        v
+    }
+}
 
 // ---------------- Levels & Types (Stage 1) ----------------
 
@@ -71,6 +150,17 @@ pub fn level_for_type(name: &str) -> Option<LogLevel> {
     guard.iter().find(|(n, _)| n == name).map(|(_, s)| s.level)
 }
 
+// --------------- Level Filter Normalization ---------------
+
+/// Normalize a user provided level filter input (string or numeric string) into a LogLevel.
+/// Accepts known type names ("info", etc.) or raw integer values.
+pub fn normalize_level(input: &str) -> Option<LogLevel> {
+    if let Ok(num) = input.parse::<i16>() {
+        return Some(LogLevel(num));
+    }
+    level_for_type(input)
+}
+
 // --------------- Record & Argument Handling (Stage 2) ---------------
 
 #[derive(Debug, Clone, PartialEq)]
@@ -116,11 +206,11 @@ impl From<u64> for ArgValue {
 impl fmt::Display for ArgValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ArgValue::String(s) => write!(f, "{}", s),
-            ArgValue::Number(n) => write!(f, "{}", n),
-            ArgValue::Bool(b) => write!(f, "{}", b),
-            ArgValue::Error(e) => write!(f, "{}", e),
-            ArgValue::OtherDebug(d) => write!(f, "{}", d),
+            ArgValue::String(s) => write!(f, "{s}"),
+            ArgValue::Number(n) => write!(f, "{n}"),
+            ArgValue::Bool(b) => write!(f, "{b}"),
+            ArgValue::Error(e) => write!(f, "{e}"),
+            ArgValue::OtherDebug(d) => write!(f, "{d}"),
         }
     }
 }
@@ -228,7 +318,7 @@ impl Throttler {
             hasher.update(msg.as_bytes());
         }
         for a in &record.args {
-            hasher.update(format!("{:?}", a).as_bytes());
+            hasher.update(format!("{a:?}").as_bytes());
         }
         *hasher.finalize().as_bytes()
     }
@@ -252,6 +342,7 @@ impl Throttler {
                     }
                 }
                 // window expired
+                // flush old group implicitly by letting caller emit new first occurrence
                 self.state.reset();
             }
             _ => {
@@ -264,6 +355,174 @@ impl Throttler {
         self.state.count = 1;
         record.repetition_count = 1;
         (true, 1)
+    }
+}
+
+// --------------- Pause / Resume & Logger Core (Stage 4 + integration) ---------------
+
+/// Reporter trait (minimal for now). Future reporters can implement advanced formatting.
+pub trait Reporter: Send + Sync {
+    fn emit(&self, record: &LogRecord, w: &mut dyn Write) -> io::Result<()>;
+}
+
+/// BasicReporter: `[type][tag] message` with repetition suffix.
+pub struct BasicReporter;
+impl Reporter for BasicReporter {
+    fn emit(&self, record: &LogRecord, w: &mut dyn Write) -> io::Result<()> {
+        let mut line = String::new();
+        line.push('[');
+        line.push_str(&record.type_name);
+        line.push(']');
+        if let Some(tag) = &record.tag {
+            line.push('[');
+            line.push_str(tag);
+            line.push(']');
+        }
+        if let Some(msg) = &record.message {
+            line.push(' ');
+            line.push_str(msg);
+        }
+        if record.repetition_count > 1 {
+            line.push(' ');
+            line.push('(');
+            line.push('x');
+            line.push_str(&record.repetition_count.to_string());
+            line.push(')');
+        }
+        line.push('\n');
+        w.write_all(line.as_bytes())
+    }
+}
+
+/// Pending item stored during pause.
+struct Pending(LogRecord);
+
+pub struct LoggerConfig {
+    pub level: LogLevel,
+    pub throttle: ThrottleConfig,
+    pub queue_capacity: Option<usize>,
+}
+impl Default for LoggerConfig {
+    fn default() -> Self {
+        Self {
+            level: LogLevel::VERBOSE, // show everything by default
+            throttle: ThrottleConfig::default(),
+            queue_capacity: None,
+        }
+    }
+}
+
+pub struct Logger<R: Reporter + 'static> {
+    cfg: LoggerConfig,
+    reporter: R,
+    throttler: Throttler,
+    paused: bool,
+    queue: VecDeque<Pending>,
+}
+
+impl<R: Reporter + 'static> Logger<R> {
+    pub fn new(reporter: R) -> Self {
+        Self {
+            cfg: LoggerConfig::default(),
+            reporter,
+            throttler: Throttler::new(ThrottleConfig::default()),
+            paused: false,
+            queue: VecDeque::new(),
+        }
+    }
+
+    pub fn with_config(mut self, cfg: LoggerConfig) -> Self {
+        self.throttler = Throttler::new(cfg.throttle.clone());
+        self.cfg = cfg;
+        self
+    }
+
+    pub fn set_level(&mut self, level: LogLevel) {
+        self.cfg.level = level;
+    }
+    pub fn level(&self) -> LogLevel {
+        self.cfg.level
+    }
+
+    /// Public logging entrypoint.
+    pub fn log<I, A>(&mut self, type_name: &str, tag: Option<String>, args: I)
+    where
+        I: IntoIterator<Item = A>,
+        A: Into<ArgValue>,
+    {
+        let args_vec: Vec<ArgValue> = args.into_iter().map(Into::into).collect();
+        let mut record = LogRecord::new(type_name, tag, args_vec);
+        if !self.passes_level(&record) {
+            return;
+        }
+        if self.paused {
+            self.enqueue(record);
+            return;
+        }
+        self.process_record(&mut record);
+    }
+
+    fn passes_level(&self, record: &LogRecord) -> bool {
+        record.level <= self.cfg.level
+    }
+
+    fn enqueue(&mut self, record: LogRecord) {
+        if let Some(cap) = self.cfg.queue_capacity {
+            if self.queue.len() >= cap {
+                // simple overflow strategy: drop oldest
+                self.queue.pop_front();
+            }
+        }
+        self.queue.push_back(Pending(record));
+    }
+
+    fn process_record(&mut self, record: &mut LogRecord) {
+        let (emit, _rep) = self.throttler.on_record(record);
+        if emit {
+            self.emit(record);
+        }
+    }
+
+    fn emit(&self, record: &LogRecord) {
+        // choose stderr for level < WARN (i.e., fatal/error)
+        let is_err = record.level <= LogLevel::ERROR;
+        let mut handle: Box<dyn Write> = if is_err {
+            Box::new(io::stderr())
+        } else {
+            Box::new(io::stdout())
+        };
+        // ignore errors silently for now (no panic). TODO: surface?
+        let _ = self.reporter.emit(record, &mut *handle);
+    }
+
+    pub fn flush(&mut self) {
+        // Force emission of currently aggregated group by resetting throttler state.
+        self.throttler.state.reset();
+    }
+
+    pub fn pause(&mut self) {
+        self.paused = true;
+    }
+    pub fn resume(&mut self) {
+        if !self.paused {
+            return;
+        }
+        self.paused = false;
+        while let Some(Pending(mut rec)) = self.queue.pop_front() {
+            if !self.passes_level(&rec) {
+                continue;
+            }
+            self.process_record(&mut rec);
+        }
+    }
+}
+
+// Convenience type alias with BasicReporter
+pub type BasicLogger = Logger<BasicReporter>;
+
+impl Default for BasicLogger {
+    fn default() -> Self {
+        Logger::new(BasicReporter)
     }
 }
 
@@ -318,5 +577,35 @@ mod tests {
         let emit3 = throttler.on_record(&mut r3); // third should emit aggregated
         assert!(emit3.0);
         assert_eq!(r3.repetition_count, 3);
+    }
+
+    #[test]
+    fn level_filtering() {
+        let mut logger = BasicLogger::default().with_config(super::LoggerConfig {
+            level: LogLevel::INFO,
+            throttle: ThrottleConfig::default(),
+            queue_capacity: None,
+        });
+        // debug should not pass (6 > 4)
+        logger.log("debug", None, ["hidden"]);
+        // info should pass
+        logger.log("info", None, ["shown"]);
+    }
+
+    #[test]
+    fn pause_resume_order() {
+        let mut logger = BasicLogger::default();
+        logger.pause();
+        logger.log("info", None, ["a"]);
+        logger.log("info", None, ["b"]);
+        logger.resume();
+        // Order should be preserved (manual inspection; advanced test would capture output with custom reporter)
+    }
+
+    #[test]
+    fn strip_ansi_basic() {
+        let colored = "\u{1b}[31mred\u{1b}[0m text";
+        let stripped = crate::utils::strip_ansi(colored);
+        assert_eq!(stripped, "red text");
     }
 }

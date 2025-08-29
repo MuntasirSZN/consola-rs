@@ -23,7 +23,7 @@ prompt-demand = ["dep:demand"]
 wasm = ["dep:wasm-bindgen"]
 bridge-log = ["dep:log"]
 bridge-tracing = ["dep:tracing", "dep:tracing-subscriber"]
-async-reporters = [] # placeholder (post-MVP)
+async-reporters = []                                       # placeholder (post-MVP)
 
 [dependencies]
 anyhow = "1"
@@ -40,8 +40,12 @@ serde_json = { version = "1", optional = true }
 demand = { version = "1.7", optional = true }
 wasm-bindgen = { version = "0.2", optional = true }
 tracing = { version = "0.1", optional = true }
-tracing-subscriber = { version = "0.3", optional = true, features = ["fmt", "registry"] }
+tracing-subscriber = { version = "0.3", optional = true, features = [
+    "fmt",
+    "registry",
+] }
 log = { version = "0.4", optional = true }
+strip-ansi-escapes = "0.2"
 
 [dev-dependencies]
 insta = { version = "1", features = ["yaml"] }

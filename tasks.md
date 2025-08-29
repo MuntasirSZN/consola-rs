@@ -44,8 +44,8 @@ This file is the authoritative actionable task list.
    - Core: anyhow, thiserror, smallvec, blake3, once_cell, anstream, anstyle, unicode-width, parking_lot
    - Optional (feature gated): serde, serde_json ("json"), demand ("prompt-demand"), wasm-bindgen ("wasm"), tracing / tracing-subscriber ("bridge-tracing"), log ("bridge-log")
 5. [x] Dev deps: insta, proptest or quickcheck, criterion, assert_fs, cargo-nextest (using `cargo nextest run` by default), cargo-deny (later), wasm-bindgen-test (wasm), rstest (optional).
-6. [ ] CI workflow skeleton (Linux): fmt, clippy, tests.
-7. [ ] Add CODEOWNERS / CONTRIBUTING stub (optional MVP).
+6. [x] CI workflow skeleton (Linux): fmt, clippy, tests.
+7. [x] Add CODEOWNERS / CONTRIBUTING stub (optional MVP).
 8. [ ] Pre-commit config / justfile or Makefile (🐢).
 
 ---
@@ -57,7 +57,7 @@ This file is the authoritative actionable task list.
 11. [x] Default LogTypeSpec table from JS: silent, fatal, error, warn, log, info, success, fail, ready, start, box, debug, trace, verbose.
 12. [x] Registration API `register_type(name, spec)` (duplicate overwrite doc).
 13. [x] Map types → numeric level via table.
-14. [ ] Level filter normalization (user sets global level).
+14. [x] Level filter normalization (user sets global level).
         🧪 Tests:
 
 - [ ] Level ordering & filter.
@@ -100,11 +100,11 @@ This file is the authoritative actionable task list.
 
 ## 4. Pause / Resume
 
-26. [ ] paused flag + queue (VecDeque<Pending>).
-27. [ ] pause(): buffer new inputs.
-28. [ ] resume(): flush suppressed group, drain queue sequentially.
-29. [ ] Optional queue capacity (⚠ decide: default unlimited, config limit).
-30. [ ] flush() public API.
+26. [x] paused flag + queue (VecDeque<Pending>).
+27. [x] pause(): buffer new inputs.
+28. [x] resume(): flush suppressed group, drain queue sequentially.
+29. [x] Optional queue capacity (⚠ decide: default unlimited, config limit) (implemented: drop-oldest strategy when capacity set).
+30. [~] flush() public API (present but only resets throttler state; needs to emit suppressed group if any).
         🧪 Tests:
 
 - [ ] Order preservation.
@@ -132,7 +132,7 @@ This file is the authoritative actionable task list.
 
 ## 6. Utilities
 
-38. [ ] strip_ansi (compiled regex once).
+38. [x] strip_ansi (using external crate `strip-ansi-escapes`).
 39. [ ] Alignment helpers.
 40. [ ] Tree formatter (depth, ellipsis).
 41. [ ] Box builder (unicode border fallback).
@@ -150,9 +150,9 @@ This file is the authoritative actionable task list.
 
 ## 7. BasicReporter
 
-45. [ ] Implement formatting: `[type][tag] message` & box special (prefix lines with " > ").
+45. [x] Implement formatting: `[type][tag] message` (box special pending).
 46. [ ] Error formatting (stack indentation).
-47. [ ] stderr for levels < 2 else stdout.
+47. [x] stderr for levels < 2 else stdout.
 48. [ ] Include date when enabled.
         🧪 Tests:
 

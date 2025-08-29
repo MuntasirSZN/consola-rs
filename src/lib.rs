@@ -277,6 +277,8 @@ struct ThrottleState {
     current_fp: Option<[u8; 32]>,
     first_time: Option<Instant>,
     count: u32,
+    stored: Option<LogRecord>,
+    emitted: bool,
 }
 
 impl ThrottleState {
@@ -285,12 +287,16 @@ impl ThrottleState {
             current_fp: None,
             first_time: None,
             count: 0,
+            stored: None,
+            emitted: false,
         }
     }
     fn reset(&mut self) {
         self.current_fp = None;
         self.first_time = None;
         self.count = 0;
+        self.stored = None;
+        self.emitted = false;
     }
 }
 
@@ -323,38 +329,65 @@ impl Throttler {
         *hasher.finalize().as_bytes()
     }
 
-    /// Returns (emit_now, repetition_count_if_any)
-    pub fn on_record(&mut self, record: &mut LogRecord) -> (bool, u32) {
-        let fp = Self::fingerprint(record);
+    pub fn on_record<F>(&mut self, mut record: LogRecord, mut emit: F)
+    where
+        F: FnMut(&LogRecord),
+    {
+        let fp = Self::fingerprint(&record);
         let now = record.timestamp;
-        match self.state.current_fp {
-            Some(current) if current == fp => {
-                // same fingerprint
-                if let Some(first) = self.state.first_time {
-                    if now.duration_since(first) <= self.cfg.window {
-                        self.state.count += 1;
-                        record.repetition_count = self.state.count;
-                        if self.state.count < self.cfg.min_count {
-                            return (false, self.state.count);
-                        } else {
-                            return (true, self.state.count);
-                        }
-                    }
-                }
-                // window expired
-                // flush old group implicitly by letting caller emit new first occurrence
-                self.state.reset();
-            }
-            _ => {
-                // new fingerprint flush previous implicit (not handled yet)
+        if let (Some(_), Some(first)) = (self.state.current_fp, self.state.first_time) {
+            if now.duration_since(first) > self.cfg.window && self.state.count > 0 {
+                self.flush_inner(true, &mut emit);
             }
         }
-        // initialize new fingerprint
+        match self.state.current_fp {
+            Some(current) if current == fp => {
+                self.state.count += 1;
+                if let Some(stored) = &mut self.state.stored {
+                    stored.repetition_count = self.state.count;
+                }
+                if self.state.count == self.cfg.min_count {
+                    if let Some(stored) = &self.state.stored {
+                        emit(stored);
+                    }
+                    self.state.emitted = true;
+                }
+                return;
+            }
+            Some(_) => {
+                self.flush_inner(true, &mut emit);
+            }
+            None => {}
+        }
         self.state.current_fp = Some(fp);
         self.state.first_time = Some(now);
         self.state.count = 1;
         record.repetition_count = 1;
-        (true, 1)
+        self.state.stored = Some(record);
+        if let Some(stored) = &self.state.stored {
+            emit(stored);
+            self.state.emitted = true;
+        }
+    }
+
+    fn flush_inner<F>(&mut self, forced: bool, emit: &mut F)
+    where
+        F: FnMut(&LogRecord),
+    {
+        if let Some(stored) = &self.state.stored {
+            if forced
+                && (self.state.count > 1 || !self.state.emitted) {
+                    emit(stored);
+                }
+        }
+        self.state.reset();
+    }
+
+    pub fn flush<F>(&mut self, mut emit: F)
+    where
+        F: FnMut(&LogRecord),
+    {
+        self.flush_inner(true, &mut emit);
     }
 }
 
@@ -451,7 +484,7 @@ impl<R: Reporter + 'static> Logger<R> {
         A: Into<ArgValue>,
     {
         let args_vec: Vec<ArgValue> = args.into_iter().map(Into::into).collect();
-        let mut record = LogRecord::new(type_name, tag, args_vec);
+        let record = LogRecord::new(type_name, tag, args_vec);
         if !self.passes_level(&record) {
             return;
         }
@@ -459,7 +492,7 @@ impl<R: Reporter + 'static> Logger<R> {
             self.enqueue(record);
             return;
         }
-        self.process_record(&mut record);
+        self.process_record(record);
     }
 
     fn passes_level(&self, record: &LogRecord) -> bool {
@@ -476,10 +509,12 @@ impl<R: Reporter + 'static> Logger<R> {
         self.queue.push_back(Pending(record));
     }
 
-    fn process_record(&mut self, record: &mut LogRecord) {
-        let (emit, _rep) = self.throttler.on_record(record);
-        if emit {
-            self.emit(record);
+    fn process_record(&mut self, record: LogRecord) {
+        let mut to_emit: Vec<LogRecord> = Vec::new();
+        self.throttler
+            .on_record(record, |r| to_emit.push(r.clone()));
+        for rec in to_emit {
+            self.emit(&rec);
         }
     }
 
@@ -496,8 +531,11 @@ impl<R: Reporter + 'static> Logger<R> {
     }
 
     pub fn flush(&mut self) {
-        // Force emission of currently aggregated group by resetting throttler state.
-        self.throttler.state.reset();
+        let mut to_emit: Vec<LogRecord> = Vec::new();
+        self.throttler.flush(|r| to_emit.push(r.clone()));
+        for rec in to_emit {
+            self.emit(&rec);
+        }
     }
 
     pub fn pause(&mut self) {
@@ -508,12 +546,18 @@ impl<R: Reporter + 'static> Logger<R> {
             return;
         }
         self.paused = false;
-        while let Some(Pending(mut rec)) = self.queue.pop_front() {
+        while let Some(Pending(rec)) = self.queue.pop_front() {
             if !self.passes_level(&rec) {
                 continue;
             }
-            self.process_record(&mut rec);
+            self.process_record(rec);
         }
+    }
+}
+
+impl<R: Reporter + 'static> Drop for Logger<R> {
+    fn drop(&mut self) {
+        self.flush();
     }
 }
 
@@ -564,19 +608,15 @@ mod tests {
 
     #[test]
     fn throttle_basic() {
-        let mut throttler = Throttler::new(ThrottleConfig {
-            window: Duration::from_millis(200),
-            min_count: 3,
-        });
-        let mut r1 = LogRecord::new("info", None, vec!["x".into()]);
-        assert!(throttler.on_record(&mut r1).0); // first emits
-        let mut r2 = LogRecord::new("info", None, vec!["x".into()]);
-        let emit2 = throttler.on_record(&mut r2); // should suppress because count=2 < min(3)
-        assert!(!emit2.0);
-        let mut r3 = LogRecord::new("info", None, vec!["x".into()]);
-        let emit3 = throttler.on_record(&mut r3); // third should emit aggregated
-        assert!(emit3.0);
-        assert_eq!(r3.repetition_count, 3);
+    let mut throttler = Throttler::new(ThrottleConfig { window: Duration::from_millis(200), min_count: 3 });
+    let mut emitted: Vec<LogRecord> = Vec::new();
+    throttler.on_record(LogRecord::new("info", None, vec!["x".into()]), |r| emitted.push(r.clone()));
+    assert_eq!(emitted.len(), 1); // first
+    throttler.on_record(LogRecord::new("info", None, vec!["x".into()]), |r| emitted.push(r.clone()));
+    assert_eq!(emitted.len(), 1); // suppressed
+    throttler.on_record(LogRecord::new("info", None, vec!["x".into()]), |r| emitted.push(r.clone()));
+    assert_eq!(emitted.len(), 2); // aggregated
+    assert_eq!(emitted[1].repetition_count, 3);
     }
 
     #[test]

@@ -13,6 +13,7 @@ pub struct FormatOptions {
     pub show_repetition: bool,
     pub show_stack: bool,
 }
+
 impl Default for FormatOptions {
     fn default() -> Self {
         Self {
@@ -48,11 +49,13 @@ pub struct SegmentStyle {
 
 pub fn build_basic_segments(record: &LogRecord, opts: &FormatOptions) -> Vec<Segment> {
     let mut v = Vec::new();
+
     if opts.date {
         let ts = {
             let z = jiff::Zoned::now();
             z.to_string()
         };
+
         v.push(Segment {
             text: ts,
             style: Some(SegmentStyle {
@@ -65,6 +68,7 @@ pub fn build_basic_segments(record: &LogRecord, opts: &FormatOptions) -> Vec<Seg
             }),
         });
     }
+
     if opts.show_type {
         v.push(Segment {
             text: format!("[{}]", record.type_name),
@@ -78,6 +82,7 @@ pub fn build_basic_segments(record: &LogRecord, opts: &FormatOptions) -> Vec<Seg
             }),
         });
     }
+
     if opts.show_tag {
         if let Some(tag) = &record.tag {
             v.push(Segment {
@@ -93,12 +98,14 @@ pub fn build_basic_segments(record: &LogRecord, opts: &FormatOptions) -> Vec<Seg
             });
         }
     }
+
     if let Some(msg) = &record.message {
         v.push(Segment {
             text: msg.clone(),
             style: None,
         });
     }
+
     if opts.show_repetition && record.repetition_count > 1 {
         v.push(Segment {
             text: format!(" (x{})", record.repetition_count),
@@ -112,5 +119,6 @@ pub fn build_basic_segments(record: &LogRecord, opts: &FormatOptions) -> Vec<Seg
             }),
         });
     }
+    
     v
 }

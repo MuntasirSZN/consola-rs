@@ -23,10 +23,59 @@ impl Reporter for BasicReporter {
             if i > 0 {
                 line.push(' ');
             }
-            line.push_str(&seg.text);
+            if self.opts.colors {
+                line.push_str(&apply_style(&seg.text, seg.style.as_ref()));
+            } else {
+                line.push_str(&seg.text);
+            }
         }
         line.push('\n');
         w.write_all(line.as_bytes())
+    }
+}
+
+fn apply_style(text: &str, style: Option<&crate::format::SegmentStyle>) -> String {
+    use std::fmt::Write as _;
+    if style.is_none() {
+        return text.to_string();
+    }
+    let s = style.unwrap();
+    let mut out = String::new();
+    let mut codes: Vec<&str> = Vec::new();
+    if let Some(color) = &s.fg_color {
+        if let Some(c) = map_color(color) {
+            codes.push(c);
+        }
+    }
+    if s.bold {
+        codes.push("1");
+    }
+    if s.dim {
+        codes.push("2");
+    }
+    if s.italic {
+        codes.push("3");
+    }
+    if s.underline {
+        codes.push("4");
+    }
+    if codes.is_empty() {
+        return text.to_string();
+    }
+    write!(&mut out, "\x1b[{}m{}\x1b[0m", codes.join(";"), text).ok();
+    out
+}
+
+fn map_color(name: &str) -> Option<&'static str> {
+    match name {
+        "gray" => Some("90"),
+        "red" => Some("31"),
+        "green" => Some("32"),
+        "yellow" => Some("33"),
+        "blue" => Some("34"),
+        "magenta" => Some("35"),
+        "cyan" => Some("36"),
+        _ => None,
     }
 }
 

@@ -46,6 +46,7 @@ tracing-subscriber = { version = "0.3", optional = true, features = [
 ] }
 log = { version = "0.4", optional = true }
 strip-ansi-escapes = "0.2"
+jiff = "0.2.15"
 
 [dev-dependencies]
 insta = { version = "1", features = ["yaml"] }

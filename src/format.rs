@@ -12,6 +12,8 @@ pub struct FormatOptions {
     pub show_type: bool,
     pub show_repetition: bool,
     pub show_stack: bool,
+    pub show_additional: bool,
+    pub show_meta: bool,
 }
 
 impl Default for FormatOptions {
@@ -27,6 +29,8 @@ impl Default for FormatOptions {
             show_type: true,
             show_repetition: true,
             show_stack: false,
+            show_additional: true,
+            show_meta: true,
         }
     }
 }
@@ -119,6 +123,88 @@ pub fn build_basic_segments(record: &LogRecord, opts: &FormatOptions) -> Vec<Seg
             }),
         });
     }
-    
+
+    // Additional args (if any) appended as JSON-ish list (placeholder formatting)
+    if opts.show_additional {
+        if let Some(additional) = &record.additional {
+            if !additional.is_empty() {
+                let mut out = String::new();
+                out.push(' ');
+                out.push('[');
+                for (i, a) in additional.iter().enumerate() {
+                    if i > 0 {
+                        out.push_str(", ");
+                    }
+                    out.push_str(&a.to_string());
+                }
+                out.push(']');
+                v.push(Segment {
+                    text: out,
+                    style: Some(SegmentStyle {
+                        fg_color: Some("cyan".into()),
+                        bg_color: None,
+                        bold: false,
+                        dim: true,
+                        italic: false,
+                        underline: false,
+                    }),
+                });
+            }
+        }
+    }
+
+    // Meta key=value pairs
+    if opts.show_meta {
+        if let Some(meta) = &record.meta {
+            if !meta.is_empty() {
+                let mut out = String::new();
+                out.push(' ');
+                out.push('{');
+                for (i, (k, vval)) in meta.iter().enumerate() {
+                    if i > 0 {
+                        out.push_str(", ");
+                    }
+                    out.push_str(k);
+                    out.push('=');
+                    out.push_str(&vval.to_string());
+                }
+                out.push('}');
+                v.push(Segment {
+                    text: out,
+                    style: Some(SegmentStyle {
+                        fg_color: Some("yellow".into()),
+                        bg_color: None,
+                        bold: false,
+                        dim: true,
+                        italic: false,
+                        underline: false,
+                    }),
+                });
+            }
+        }
+    }
+
+    // Stack (multi-line) appended if enabled
+    if opts.show_stack {
+        if let Some(stack) = &record.stack {
+            if !stack.is_empty() {
+                for (i, line) in stack.iter().enumerate() {
+                    let prefix = if i == 0 { "\n" } else { "" };
+                    v.push(Segment {
+                        text: format!("{prefix}{line}"),
+                        style: Some(SegmentStyle {
+                            fg_color: Some("gray".into()),
+                            bg_color: None,
+                            bold: false,
+                            dim: false,
+                            italic: false,
+                            underline: false,
+                        }),
+                    });
+                }
+            }
+        }
+    }
+
     v
 }

@@ -117,7 +117,7 @@ This file is the authoritative actionable task list.
 
 31. [x] Segment model (text + style metadata).
 32. [x] FormatOptions { date, colors, compact, columns, error_level, unicode_mode }.
-33. [~] Builder: record → segments (implemented: time, type, tag, message, repetition; pending: additional, stack, meta handling, fancy variants).
+33. [~] Builder: record → segments (implemented: time, type, tag, message, repetition, additional, meta, stack basic; pending: fancy icon/badge styling, error chain depth formatting).
 34. [ ] Raw path bypass (fast string assembly).
 35. [ ] Column width detection (from terminal; fallback).
 36. [ ] Width calc with unicode-width; fallback char len if disabled.

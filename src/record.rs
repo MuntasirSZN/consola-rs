@@ -67,6 +67,10 @@ pub struct LogRecord {
     pub args: Vec<ArgValue>,
     pub message: Option<String>,
     pub repetition_count: u32,
+    // Additional structured fields (pending richer handling)
+    pub additional: Option<Vec<ArgValue>>,
+    pub meta: Option<Vec<(String, ArgValue)>>,
+    pub stack: Option<Vec<String>>, // simple lines
 }
 
 impl LogRecord {
@@ -81,6 +85,9 @@ impl LogRecord {
             args,
             message,
             repetition_count: 0,
+            additional: None,
+            meta: None,
+            stack: None,
         }
     }
 
@@ -100,7 +107,23 @@ impl LogRecord {
             args,
             message,
             repetition_count: 0,
+            additional: None,
+            meta: None,
+            stack: None,
         }
+    }
+
+    pub fn with_additional(mut self, additional: Vec<ArgValue>) -> Self {
+        self.additional = Some(additional);
+        self
+    }
+    pub fn with_meta(mut self, meta: Vec<(String, ArgValue)>) -> Self {
+        self.meta = Some(meta);
+        self
+    }
+    pub fn with_stack<S: Into<String>>(mut self, lines: Vec<S>) -> Self {
+        self.stack = Some(lines.into_iter().map(Into::into).collect());
+        self
     }
 }
 

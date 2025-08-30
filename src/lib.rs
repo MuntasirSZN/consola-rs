@@ -13,12 +13,13 @@
 //! This is incremental per `tasks.md`.
 
 use blake3::Hasher;
-use once_cell::sync::Lazy;
 use std::collections::VecDeque;
 use std::fmt;
 use std::io::{self, Write};
-use std::sync::RwLock;
 use std::time::{Duration, Instant};
+
+pub mod levels;
+pub use levels::{LogLevel, LogTypeSpec, level_for_type, normalize_level, register_type};
 
 pub mod utils {
     /// Strip ANSI escape sequences using the `strip-ansi-escapes` crate (robust implementation).
@@ -169,81 +170,7 @@ pub mod format {
     }
 }
 
-// ---------------- Levels & Types (Stage 1) ----------------
-
-/// Sentinel / numeric log levels.
-/// Ordering: lower is more severe.
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct LogLevel(pub i16);
-
-impl LogLevel {
-    pub const SILENT: LogLevel = LogLevel(-99);
-    pub const FATAL: LogLevel = LogLevel(0);
-    pub const ERROR: LogLevel = LogLevel(1);
-    pub const WARN: LogLevel = LogLevel(2);
-    pub const LOG: LogLevel = LogLevel(3);
-    pub const INFO: LogLevel = LogLevel(4);
-    pub const SUCCESS: LogLevel = LogLevel(5);
-    pub const DEBUG: LogLevel = LogLevel(6);
-    pub const TRACE: LogLevel = LogLevel(7);
-    pub const VERBOSE: LogLevel = LogLevel(99);
-}
-
-/// Specification for a log type.
-#[derive(Debug, Clone)]
-pub struct LogTypeSpec {
-    pub level: LogLevel,
-}
-
-static TYPE_REGISTRY: Lazy<RwLock<Vec<(String, LogTypeSpec)>>> = Lazy::new(|| {
-    let mut v = Vec::new();
-    // default mapping parity attempt
-    for (name, level) in [
-        ("silent", LogLevel::SILENT),
-        ("fatal", LogLevel::FATAL),
-        ("error", LogLevel::ERROR),
-        ("warn", LogLevel::WARN),
-        ("log", LogLevel::LOG),
-        ("info", LogLevel::INFO),
-        ("success", LogLevel::SUCCESS),
-        ("fail", LogLevel::SUCCESS), // alias to success level for now
-        ("ready", LogLevel::INFO),
-        ("start", LogLevel::LOG),
-        ("box", LogLevel::LOG),
-        ("debug", LogLevel::DEBUG),
-        ("trace", LogLevel::TRACE),
-        ("verbose", LogLevel::VERBOSE),
-    ] {
-        v.push((name.to_string(), LogTypeSpec { level }));
-    }
-    RwLock::new(v)
-});
-
-/// Register or overwrite a log type.
-pub fn register_type(name: &str, spec: LogTypeSpec) {
-    let mut guard = TYPE_REGISTRY.write().unwrap();
-    if let Some(existing) = guard.iter_mut().find(|(n, _)| n == name) {
-        *existing = (name.to_string(), spec);
-    } else {
-        guard.push((name.to_string(), spec));
-    }
-}
-
-pub fn level_for_type(name: &str) -> Option<LogLevel> {
-    let guard = TYPE_REGISTRY.read().unwrap();
-    guard.iter().find(|(n, _)| n == name).map(|(_, s)| s.level)
-}
-
-// --------------- Level Filter Normalization ---------------
-
-/// Normalize a user provided level filter input (string or numeric string) into a LogLevel.
-/// Accepts known type names ("info", etc.) or raw integer values.
-pub fn normalize_level(input: &str) -> Option<LogLevel> {
-    if let Ok(num) = input.parse::<i16>() {
-        return Some(LogLevel(num));
-    }
-    level_for_type(input)
-}
+// Levels & types re-exported from levels module.
 
 // --------------- Record & Argument Handling (Stage 2) ---------------
 
@@ -485,13 +412,21 @@ pub trait Reporter: Send + Sync {
 pub struct BasicReporter {
     pub opts: crate::format::FormatOptions,
 }
-impl Default for BasicReporter { fn default() -> Self { Self { opts: crate::format::FormatOptions::default() } } }
+impl Default for BasicReporter {
+    fn default() -> Self {
+        Self {
+            opts: crate::format::FormatOptions::default(),
+        }
+    }
+}
 impl Reporter for BasicReporter {
     fn emit(&self, record: &LogRecord, w: &mut dyn Write) -> io::Result<()> {
         let segments = crate::format::build_basic_segments(record, &self.opts);
         let mut line = String::new();
         for (i, seg) in segments.iter().enumerate() {
-            if i > 0 { line.push(' '); }
+            if i > 0 {
+                line.push(' ');
+            }
             line.push_str(&seg.text);
         }
         line.push('\n');
@@ -638,7 +573,7 @@ pub type BasicLogger = Logger<BasicReporter>;
 
 impl Default for BasicLogger {
     fn default() -> Self {
-    Logger::new(BasicReporter::default())
+        Logger::new(BasicReporter::default())
     }
 }
 

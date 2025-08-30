@@ -71,6 +71,7 @@ pub struct LogRecord {
     pub additional: Option<Vec<ArgValue>>,
     pub meta: Option<Vec<(String, ArgValue)>>,
     pub stack: Option<Vec<String>>, // simple lines
+    pub is_raw: bool,
 }
 
 impl LogRecord {
@@ -88,6 +89,7 @@ impl LogRecord {
             additional: None,
             meta: None,
             stack: None,
+            is_raw: false,
         }
     }
 
@@ -110,6 +112,7 @@ impl LogRecord {
             additional: None,
             meta: None,
             stack: None,
+            is_raw: false,
         }
     }
 
@@ -124,6 +127,23 @@ impl LogRecord {
     pub fn with_stack<S: Into<String>>(mut self, lines: Vec<S>) -> Self {
         self.stack = Some(lines.into_iter().map(Into::into).collect());
         self
+    }
+
+    pub fn raw(type_name: &str, tag: Option<String>, message: &str, timestamp: Instant) -> Self {
+        let level = level_for_type(type_name).unwrap_or(LogLevel::LOG);
+        Self {
+            timestamp,
+            level,
+            type_name: type_name.to_string(),
+            tag,
+            args: Vec::new(),
+            message: Some(message.to_string()),
+            repetition_count: 0,
+            additional: None,
+            meta: None,
+            stack: None,
+            is_raw: true,
+        }
     }
 }
 

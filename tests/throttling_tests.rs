@@ -69,6 +69,15 @@ fn window_expiry_flushes_group() {
 }
 
 #[test]
+fn raw_logging_path_basic() {
+    // Ensure raw records can be produced and throttled through logger interface
+    let mut logger = BasicLogger::default();
+    logger.log_raw("info", None, "raw message one");
+    logger.log_raw("info", None, "raw message one"); // may aggregate later depending on min_count=2 default
+    logger.flush();
+}
+
+#[test]
 fn no_duplicate_on_final_flush_after_aggregate() {
     let mut t = Throttler::new(ThrottleConfig {
         window: Duration::from_millis(200),

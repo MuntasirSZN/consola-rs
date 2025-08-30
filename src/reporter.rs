@@ -107,6 +107,24 @@ impl<R: Reporter + 'static> Logger<R> {
         self.process_record(record);
     }
 
+    pub fn log_raw(&mut self, type_name: &str, tag: Option<String>, message: &str) {
+        let now = self
+            .cfg
+            .clock
+            .as_ref()
+            .map(|c| c.now())
+            .unwrap_or_else(|| self.system_clock.now());
+        let record = LogRecord::raw(type_name, tag, message, now);
+        if !self.passes_level(&record) {
+            return;
+        }
+        if self.paused {
+            self.enqueue(record);
+            return;
+        }
+        self.process_record(record);
+    }
+
     fn passes_level(&self, record: &LogRecord) -> bool {
         record.level <= self.cfg.level
     }

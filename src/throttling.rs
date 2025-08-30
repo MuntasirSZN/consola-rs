@@ -71,8 +71,10 @@ impl Throttler {
         if let Some(msg) = &record.message {
             h.update(msg.as_bytes());
         }
-        for a in &record.args {
-            h.update(format!("{a:?}").as_bytes());
+        if !record.is_raw {
+            for a in &record.args {
+                h.update(format!("{a:?}").as_bytes());
+            }
         }
         *h.finalize().as_bytes()
     }

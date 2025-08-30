@@ -106,19 +106,43 @@ pub mod format {
                     z.to_string()
                 }
             };
-            v.push(Segment { text: ts, style: Some(SegmentStyle { fg_color: Some("gray".into()), bg_color: None, bold: false, dim: true, italic: false, underline: false }) });
+            v.push(Segment {
+                text: ts,
+                style: Some(SegmentStyle {
+                    fg_color: Some("gray".into()),
+                    bg_color: None,
+                    bold: false,
+                    dim: true,
+                    italic: false,
+                    underline: false,
+                }),
+            });
         }
         if opts.show_type {
             v.push(Segment {
                 text: format!("[{}]", record.type_name),
-                style: Some(SegmentStyle { fg_color: Some("cyan".into()), bg_color: None, bold: true, dim: false, italic: false, underline: false }),
+                style: Some(SegmentStyle {
+                    fg_color: Some("cyan".into()),
+                    bg_color: None,
+                    bold: true,
+                    dim: false,
+                    italic: false,
+                    underline: false,
+                }),
             });
         }
         if opts.show_tag {
             if let Some(tag) = &record.tag {
                 v.push(Segment {
-                    text: format!("[{}]", tag),
-                    style: Some(SegmentStyle { fg_color: Some("magenta".into()), bg_color: None, bold: false, dim: false, italic: true, underline: false }),
+                    text: format!("[{tag}]"),
+                    style: Some(SegmentStyle {
+                        fg_color: Some("magenta".into()),
+                        bg_color: None,
+                        bold: false,
+                        dim: false,
+                        italic: true,
+                        underline: false,
+                    }),
                 });
             }
         }
@@ -131,7 +155,14 @@ pub mod format {
         if opts.show_repetition && record.repetition_count > 1 {
             v.push(Segment {
                 text: format!(" (x{})", record.repetition_count),
-                style: Some(SegmentStyle { fg_color: Some("gray".into()), bg_color: None, bold: false, dim: true, italic: false, underline: false }),
+                style: Some(SegmentStyle {
+                    fg_color: Some("gray".into()),
+                    bg_color: None,
+                    bold: false,
+                    dim: true,
+                    italic: false,
+                    underline: false,
+                }),
             });
         }
         v
@@ -451,28 +482,17 @@ pub trait Reporter: Send + Sync {
 }
 
 /// BasicReporter: `[type][tag] message` with repetition suffix.
-pub struct BasicReporter;
+pub struct BasicReporter {
+    pub opts: crate::format::FormatOptions,
+}
+impl Default for BasicReporter { fn default() -> Self { Self { opts: crate::format::FormatOptions::default() } } }
 impl Reporter for BasicReporter {
     fn emit(&self, record: &LogRecord, w: &mut dyn Write) -> io::Result<()> {
+        let segments = crate::format::build_basic_segments(record, &self.opts);
         let mut line = String::new();
-        line.push('[');
-        line.push_str(&record.type_name);
-        line.push(']');
-        if let Some(tag) = &record.tag {
-            line.push('[');
-            line.push_str(tag);
-            line.push(']');
-        }
-        if let Some(msg) = &record.message {
-            line.push(' ');
-            line.push_str(msg);
-        }
-        if record.repetition_count > 1 {
-            line.push(' ');
-            line.push('(');
-            line.push('x');
-            line.push_str(&record.repetition_count.to_string());
-            line.push(')');
+        for (i, seg) in segments.iter().enumerate() {
+            if i > 0 { line.push(' '); }
+            line.push_str(&seg.text);
         }
         line.push('\n');
         w.write_all(line.as_bytes())
@@ -618,7 +638,7 @@ pub type BasicLogger = Logger<BasicReporter>;
 
 impl Default for BasicLogger {
     fn default() -> Self {
-        Logger::new(BasicReporter)
+    Logger::new(BasicReporter::default())
     }
 }
 

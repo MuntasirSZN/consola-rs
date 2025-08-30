@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::error::Error;
+
 pub fn collect_chain(err: &(dyn Error + 'static)) -> Vec<String> {
     let mut out = Vec::new();
     let mut seen: HashSet<usize> = HashSet::new();

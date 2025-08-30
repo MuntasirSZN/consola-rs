@@ -1,6 +1,7 @@
 use crate::levels::{LogLevel, level_for_type};
 use std::fmt;
 use std::time::Instant;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum ArgValue {
     String(String),
@@ -9,16 +10,19 @@ pub enum ArgValue {
     Error(String),
     OtherDebug(String),
 }
+
 impl From<&str> for ArgValue {
     fn from(s: &str) -> Self {
         Self::String(s.to_string())
     }
 }
+
 impl From<String> for ArgValue {
     fn from(s: String) -> Self {
         Self::String(s)
     }
 }
+
 impl From<bool> for ArgValue {
     fn from(b: bool) -> Self {
         Self::Bool(b)
@@ -29,16 +33,19 @@ impl From<f64> for ArgValue {
         Self::Number(n)
     }
 }
+
 impl From<i64> for ArgValue {
     fn from(n: i64) -> Self {
         Self::Number(n as f64)
     }
 }
+
 impl From<u64> for ArgValue {
     fn from(n: u64) -> Self {
         Self::Number(n as f64)
     }
 }
+
 impl fmt::Display for ArgValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -50,6 +57,7 @@ impl fmt::Display for ArgValue {
         }
     }
 }
+
 #[derive(Debug, Clone)]
 pub struct LogRecord {
     pub timestamp: Instant,
@@ -60,6 +68,7 @@ pub struct LogRecord {
     pub message: Option<String>,
     pub repetition_count: u32,
 }
+
 impl LogRecord {
     pub fn new(type_name: &str, tag: Option<String>, args: Vec<ArgValue>) -> Self {
         let level = level_for_type(type_name).unwrap_or(LogLevel::LOG);
@@ -74,7 +83,27 @@ impl LogRecord {
             repetition_count: 0,
         }
     }
+
+    pub fn new_with_timestamp(
+        type_name: &str,
+        tag: Option<String>,
+        args: Vec<ArgValue>,
+        timestamp: Instant,
+    ) -> Self {
+        let level = level_for_type(type_name).unwrap_or(LogLevel::LOG);
+        let message = build_message(&args);
+        Self {
+            timestamp,
+            level,
+            type_name: type_name.to_string(),
+            tag,
+            args,
+            message,
+            repetition_count: 0,
+        }
+    }
 }
+
 fn build_message(args: &[ArgValue]) -> Option<String> {
     if args.is_empty() {
         return None;

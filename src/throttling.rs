@@ -1,11 +1,13 @@
 use crate::record::LogRecord;
 use blake3::Hasher;
 use std::time::{Duration, Instant};
+
 #[derive(Debug, Clone)]
 pub struct ThrottleConfig {
     pub window: Duration,
     pub min_count: u32,
 }
+
 impl Default for ThrottleConfig {
     fn default() -> Self {
         Self {
@@ -14,6 +16,7 @@ impl Default for ThrottleConfig {
         }
     }
 }
+
 #[derive(Debug)]
 struct ThrottleState {
     current_fp: Option<[u8; 32]>,
@@ -21,7 +24,9 @@ struct ThrottleState {
     count: u32,
     stored: Option<LogRecord>,
     emitted: bool,
+    last_emitted_count: u32,
 }
+
 impl ThrottleState {
     fn new() -> Self {
         Self {
@@ -30,20 +35,24 @@ impl ThrottleState {
             count: 0,
             stored: None,
             emitted: false,
+            last_emitted_count: 0,
         }
     }
+
     fn reset(&mut self) {
         self.current_fp = None;
         self.first_time = None;
         self.count = 0;
         self.stored = None;
         self.emitted = false;
+        self.last_emitted_count = 0;
     }
 }
 pub struct Throttler {
     cfg: ThrottleConfig,
     state: ThrottleState,
 }
+
 impl Throttler {
     pub fn new(cfg: ThrottleConfig) -> Self {
         Self {
@@ -51,6 +60,7 @@ impl Throttler {
             state: ThrottleState::new(),
         }
     }
+
     pub fn fingerprint(record: &LogRecord) -> [u8; 32] {
         let mut h = Hasher::new();
         h.update(record.type_name.as_bytes());
@@ -66,6 +76,7 @@ impl Throttler {
         }
         *h.finalize().as_bytes()
     }
+
     pub fn on_record<F>(&mut self, mut record: LogRecord, mut emit: F)
     where
         F: FnMut(&LogRecord),
@@ -86,6 +97,7 @@ impl Throttler {
                 if self.state.count == self.cfg.min_count {
                     if let Some(stored) = &self.state.stored {
                         emit(stored);
+                        self.state.last_emitted_count = self.state.count;
                     }
                     self.state.emitted = true;
                 }
@@ -104,19 +116,23 @@ impl Throttler {
         if let Some(stored) = &self.state.stored {
             emit(stored);
             self.state.emitted = true;
+            self.state.last_emitted_count = self.state.count;
         }
     }
+
     fn flush_inner<F>(&mut self, forced: bool, emit: &mut F)
     where
         F: FnMut(&LogRecord),
     {
         if let Some(stored) = &self.state.stored {
-            if forced && (self.state.count > 1 || !self.state.emitted) {
+            if forced && (!self.state.emitted || self.state.count != self.state.last_emitted_count)
+            {
                 emit(stored);
             }
         }
         self.state.reset();
     }
+
     pub fn flush<F>(&mut self, mut emit: F)
     where
         F: FnMut(&LogRecord),

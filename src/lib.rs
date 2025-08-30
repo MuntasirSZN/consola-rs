@@ -13,6 +13,8 @@ pub mod error_chain;
 pub use error_chain::*;
 pub mod utils;
 pub use utils::*;
+pub mod clock;
+pub use clock::*;
 
 // Test-only imports
 #[cfg(test)]
@@ -86,6 +88,7 @@ mod tests {
             level: LogLevel::INFO,
             throttle: ThrottleConfig::default(),
             queue_capacity: None,
+            clock: None,
         });
         // debug should not pass (6 > 4)
         logger.log("debug", None, ["hidden"]);

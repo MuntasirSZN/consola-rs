@@ -60,9 +60,9 @@ This file is the authoritative actionable task list.
 14. [x] Level filter normalization (user sets global level).
         🧪 Tests:
 
-- [ ] Level ordering & filter.
-- [ ] Default type mapping parity.
-- [ ] Custom type registration.
+- [x] Level ordering & filter.
+- [x] Default type mapping parity.
+- [x] Custom type registration.
 
 ---
 
@@ -86,9 +86,9 @@ This file is the authoritative actionable task list.
 20. [x] Fingerprint (stable string join + blake3 hash).
 21. [x] Config: throttle_window_ms, throttle_min_count.
 22. [x] Coalescence logic (basic implementation).
-23. [ ] Repetition flush triggers: new fingerprint, window expire (timer), flush(), pause(), drop.
-24. [ ] Suffix formatting rules (basic: " (xN)", fancy: dim "(xN)", json: repeat field).
-25. [ ] Clock abstraction (MockClock for tests).
+23. [~] Repetition flush triggers: new fingerprint, window expire (timer), flush(), pause(), drop. (Implemented: new fingerprint, flush() public, pause()/drop flush; window expiry logic exists but lacks dedicated test)
+24. [x] Suffix formatting rules (basic: " (xN)" implemented in basic builder; fancy/json pending styles/fields).
+25. [x] Clock abstraction (MockClock for tests).
         🧪 Tests:
 
 - [ ] Coalesce below vs at threshold.
@@ -104,7 +104,7 @@ This file is the authoritative actionable task list.
 27. [x] pause(): buffer new inputs.
 28. [x] resume(): flush suppressed group, drain queue sequentially.
 29. [x] Optional queue capacity (⚠ decide: default unlimited, config limit) (implemented: drop-oldest strategy when capacity set).
-30. [~] flush() public API (present but only resets throttler state; needs to emit suppressed group if any).
+30. [x] flush() public API (emits suppressed group if any).
         🧪 Tests:
 
 - [ ] Order preservation.
@@ -115,9 +115,9 @@ This file is the authoritative actionable task list.
 
 ## 5. Formatting Pipeline (Core)
 
-31. [ ] Segment model (text + style metadata).
-32. [ ] FormatOptions { date, colors, compact, columns, error_level, unicode_mode }.
-33. [ ] Builder: record → segments (time, type/icon/badge, tag, message, additional, repetition, stack).
+31. [x] Segment model (text + style metadata).
+32. [x] FormatOptions { date, colors, compact, columns, error_level, unicode_mode }.
+33. [~] Builder: record → segments (implemented: time, type, tag, message, repetition; pending: additional, stack, meta handling, fancy variants).
 34. [ ] Raw path bypass (fast string assembly).
 35. [ ] Column width detection (from terminal; fallback).
 36. [ ] Width calc with unicode-width; fallback char len if disabled.

@@ -1,4 +1,5 @@
 use crate::record::LogRecord;
+
 #[derive(Debug, Clone)]
 pub struct FormatOptions {
     pub date: bool,
@@ -28,11 +29,13 @@ impl Default for FormatOptions {
         }
     }
 }
+
 #[derive(Debug, Clone)]
 pub struct Segment {
     pub text: String,
     pub style: Option<SegmentStyle>,
 }
+
 #[derive(Debug, Clone)]
 pub struct SegmentStyle {
     pub fg_color: Option<String>,
@@ -42,6 +45,7 @@ pub struct SegmentStyle {
     pub italic: bool,
     pub underline: bool,
 }
+
 pub fn build_basic_segments(record: &LogRecord, opts: &FormatOptions) -> Vec<Segment> {
     let mut v = Vec::new();
     if opts.date {

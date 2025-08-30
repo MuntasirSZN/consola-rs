@@ -91,9 +91,9 @@ This file is the authoritative actionable task list.
 25. [x] Clock abstraction (MockClock for tests).
         🧪 Tests:
 
-- [ ] Coalesce below vs at threshold.
-- [ ] Window expiry flush.
-- [ ] Manual flush releases suppressed.
+- [x] Coalesce below vs at threshold.
+- [x] Window expiry flush.
+- [x] Manual flush releases suppressed.
 - [ ] Mixed raw/formatted same fingerprint case.
 
 ---

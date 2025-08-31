@@ -1,5 +1,7 @@
 use crate::clock::{Clock, SystemClock};
-use crate::format::{FormatOptions, build_basic_segments};
+use crate::format::{
+    FormatOptions, build_basic_segments, compute_line_width, detect_terminal_width,
+};
 use crate::levels::LogLevel;
 use crate::record::{ArgValue, LogRecord};
 use crate::throttling::{ThrottleConfig, Throttler};
@@ -18,19 +20,64 @@ pub struct BasicReporter {
 impl Reporter for BasicReporter {
     fn emit(&self, record: &LogRecord, w: &mut dyn Write) -> io::Result<()> {
         let segments = build_basic_segments(record, &self.opts);
-        let mut line = String::new();
+        let cols = self.opts.columns.or_else(detect_terminal_width);
+        // Build plain parts for potential future width computations (currently unused beyond join length logic)
+        let mut plain_parts: Vec<String> = Vec::new();
         for (i, seg) in segments.iter().enumerate() {
             if i > 0 {
-                line.push(' ');
+                plain_parts.push(" ".into());
             }
-            if self.opts.colors {
-                line.push_str(&apply_style(&seg.text, seg.style.as_ref()));
-            } else {
-                line.push_str(&seg.text);
-            }
+            plain_parts.push(seg.text.clone());
         }
-        line.push('\n');
-        w.write_all(line.as_bytes())
+        let width = cols.unwrap_or(usize::MAX);
+        if width == usize::MAX || compute_line_width(&segments) <= width {
+            // Single line output
+            let mut out = String::new();
+            for (i, seg) in segments.iter().enumerate() {
+                if i > 0 {
+                    out.push(' ');
+                }
+                if self.opts.colors {
+                    out.push_str(&apply_style(&seg.text, seg.style.as_ref()));
+                } else {
+                    out.push_str(&seg.text);
+                }
+            }
+            out.push('\n');
+            w.write_all(out.as_bytes())
+        } else {
+            // Wrap naive by chars; future: width-aware segmentation
+            let mut current = String::new();
+            let mut current_len = 0usize;
+            let mut first_segment = true;
+            for seg in &segments {
+                let raw = &seg.text;
+                let styled = if self.opts.colors {
+                    apply_style(raw, seg.style.as_ref())
+                } else {
+                    raw.clone()
+                };
+                let piece_len = raw.chars().count() + if !first_segment { 1 } else { 0 };
+                if current_len + piece_len > width && !current.is_empty() {
+                    current.push('\n');
+                    w.write_all(current.as_bytes())?;
+                    current.clear();
+                    current_len = 0;
+                    first_segment = true;
+                }
+                if !first_segment {
+                    current.push(' ');
+                    current_len += 1;
+                }
+                current.push_str(&styled);
+                current_len += raw.chars().count();
+                first_segment = false;
+            }
+            if !current.ends_with('\n') {
+                current.push('\n');
+            }
+            w.write_all(current.as_bytes())
+        }
     }
 }
 

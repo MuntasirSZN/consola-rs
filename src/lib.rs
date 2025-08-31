@@ -1,4 +1,5 @@
 //! consola-rs core library: modular facade.
+
 pub mod levels;
 pub use levels::*;
 pub mod record;
@@ -16,18 +17,10 @@ pub use utils::*;
 pub mod clock;
 pub use clock::*;
 
-// Test-only imports
-#[cfg(test)]
-use std::time::Duration;
-
-// (Implementation moved to modules.)
-
-// (Removed duplicated implementations; now using modules.)
-
-// --------------- Tests (basic) ---------------
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
 
     #[test]
     fn level_ordering() {

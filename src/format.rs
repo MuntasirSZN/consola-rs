@@ -1,3 +1,4 @@
+use crate::error_chain::format_chain_lines;
 use crate::record::LogRecord;
 use std::env;
 
@@ -226,6 +227,27 @@ pub fn build_basic_segments(record: &LogRecord, opts: &FormatOptions) -> Vec<Seg
                         }),
                     });
                 }
+            }
+        } else if let Some(crate::record::ArgValue::Error(msg)) = record
+            .args
+            .iter()
+            .find(|a| matches!(a, crate::record::ArgValue::Error(_)))
+        {
+            // Build pseudo chain from single error message only (placeholder)
+            let lines = format_chain_lines(&[msg.clone()], opts.error_level);
+            for (i, line) in lines.iter().enumerate() {
+                let prefix = if i == 0 { "\n" } else { "" };
+                v.push(Segment {
+                    text: format!("{prefix}{line}"),
+                    style: Some(SegmentStyle {
+                        fg_color: Some("gray".into()),
+                        bg_color: None,
+                        bold: false,
+                        dim: false,
+                        italic: false,
+                        underline: false,
+                    }),
+                });
             }
         }
     }

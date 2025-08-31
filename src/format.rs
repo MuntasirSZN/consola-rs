@@ -1,4 +1,5 @@
 use crate::record::LogRecord;
+use std::env;
 
 #[derive(Debug, Clone)]
 pub struct FormatOptions {
@@ -32,6 +33,29 @@ impl Default for FormatOptions {
             show_additional: true,
             show_meta: true,
         }
+    }
+}
+
+impl FormatOptions {
+    pub fn adaptive() -> Self {
+        let mut o = Self::default();
+        // Env overrides
+        if env::var("NO_COLOR").is_ok() {
+            o.colors = false;
+        }
+        if let Ok(force) = env::var("FORCE_COLOR") {
+            if !force.is_empty() && force != "0" {
+                o.colors = true;
+            }
+        }
+        if let Ok(compact) = env::var("CONSOLA_COMPACT") {
+            if compact == "1" {
+                o.compact = true;
+            }
+        }
+        // Terminal width detect
+        o.columns = detect_terminal_width();
+        o
     }
 }
 
@@ -207,4 +231,33 @@ pub fn build_basic_segments(record: &LogRecord, opts: &FormatOptions) -> Vec<Seg
     }
 
     v
+}
+
+/// Attempt to detect terminal column width.
+pub fn detect_terminal_width() -> Option<usize> {
+    if let Ok(cols) = env::var("COLUMNS") {
+        if let Ok(n) = cols.parse::<usize>() {
+            if n > 0 {
+                return Some(n);
+            }
+        }
+    }
+    None
+}
+
+/// Compute printable width of concatenated segments (simplistic; excludes ANSI codes)
+pub fn compute_line_width(segments: &[Segment]) -> usize {
+    segments.iter().map(|s| display_width(&s.text)).sum()
+}
+
+fn display_width(s: &str) -> usize {
+    #[cfg(feature = "fancy")]
+    {
+        use unicode_width::UnicodeWidthStr;
+        UnicodeWidthStr::width(s)
+    }
+    #[cfg(not(feature = "fancy"))]
+    {
+        s.chars().count()
+    }
 }

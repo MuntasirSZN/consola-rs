@@ -249,3 +249,11 @@ impl Default for BasicLogger {
         Logger::new(BasicReporter::default())
     }
 }
+
+impl BasicReporter {
+    pub fn adaptive() -> Self {
+        Self {
+            opts: FormatOptions::adaptive(),
+        }
+    }
+}

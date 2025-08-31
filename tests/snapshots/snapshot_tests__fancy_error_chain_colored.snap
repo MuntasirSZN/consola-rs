@@ -1,0 +1,5 @@
+---
+source: tests/snapshot_tests.rs
+expression: colored
+---
+[31;1m✖[0m [36;1m[error][0m processing failed top context

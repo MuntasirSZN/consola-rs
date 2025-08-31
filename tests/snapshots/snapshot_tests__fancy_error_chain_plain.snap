@@ -1,0 +1,5 @@
+---
+source: tests/snapshot_tests.rs
+expression: plain
+---
+✖ [error] processing failed top context

@@ -72,6 +72,7 @@ pub struct LogRecord {
     pub meta: Option<Vec<(String, ArgValue)>>,
     pub stack: Option<Vec<String>>, // simple lines
     pub is_raw: bool,
+    pub error_chain: Option<Vec<String>>, // collected error chain lines (unprefixed)
 }
 
 impl LogRecord {
@@ -90,6 +91,7 @@ impl LogRecord {
             meta: None,
             stack: None,
             is_raw: false,
+            error_chain: None,
         }
     }
 
@@ -113,6 +115,7 @@ impl LogRecord {
             meta: None,
             stack: None,
             is_raw: false,
+            error_chain: None,
         }
     }
 
@@ -143,7 +146,35 @@ impl LogRecord {
             meta: None,
             stack: None,
             is_raw: true,
+            error_chain: None,
         }
+    }
+
+    pub fn with_error_chain(mut self, chain: Vec<String>) -> Self {
+        self.error_chain = Some(chain);
+        self
+    }
+
+    pub fn attach_error<E: std::error::Error + 'static>(mut self, err: &E) -> Self {
+        // push the top error string as an ArgValue::Error (for message concatenation) if message not already explicit
+        self.args.push(ArgValue::Error(err.to_string()));
+        if self.error_chain.is_none() {
+            self.error_chain = Some(crate::error_chain::collect_chain(
+                err as &dyn std::error::Error,
+            ));
+        }
+        // Rebuild message to include this error
+        self.message = build_message(&self.args);
+        self
+    }
+
+    pub fn attach_dyn_error(mut self, err: &(dyn std::error::Error + 'static)) -> Self {
+        self.args.push(ArgValue::Error(err.to_string()));
+        if self.error_chain.is_none() {
+            self.error_chain = Some(crate::error_chain::collect_chain(err));
+        }
+        self.message = build_message(&self.args);
+        self
     }
 }
 

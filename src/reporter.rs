@@ -12,8 +12,17 @@ pub trait Reporter: Send + Sync {
     fn emit(&self, record: &LogRecord, w: &mut dyn Write) -> io::Result<()>;
 }
 
+pub trait ReporterWithOptions {
+    fn fmt_options(&self) -> &FormatOptions;
+    fn fmt_options_mut(&mut self) -> &mut FormatOptions;
+}
+
 #[derive(Default)]
 pub struct BasicReporter {
+    pub opts: FormatOptions,
+}
+
+pub struct FancyReporter {
     pub opts: FormatOptions,
 }
 
@@ -78,6 +87,73 @@ impl Reporter for BasicReporter {
             }
             w.write_all(current.as_bytes())
         }
+    }
+}
+
+impl Reporter for FancyReporter {
+    fn emit(&self, record: &LogRecord, w: &mut dyn Write) -> io::Result<()> {
+        let mut segs = build_basic_segments(record, &self.opts);
+        // Prepend icon badge based on type
+        let icon = match record.type_name.as_str() {
+            "info" => Some("ℹ"),
+            "success" => Some("✔"),
+            "error" | "fail" | "fatal" => Some("✖"),
+            "warn" => Some("⚠"),
+            "debug" => Some("🐛"),
+            "trace" => Some("↳"),
+            _ => None,
+        };
+        if let Some(ic) = icon {
+            segs.insert(
+                0,
+                crate::format::Segment {
+                    text: ic.to_string(),
+                    style: Some(crate::format::SegmentStyle {
+                        fg_color: Some(icon_color(record).to_string()),
+                        bg_color: None,
+                        bold: true,
+                        dim: false,
+                        italic: false,
+                        underline: false,
+                    }),
+                },
+            );
+        }
+        // Adjust repetition style to dim fully
+        for s in &mut segs {
+            if s.text.starts_with(" (x") {
+                if let Some(st) = &mut s.style {
+                    st.dim = true;
+                }
+            }
+        }
+        let mut out = String::new();
+        for (i, seg) in segs.iter().enumerate() {
+            if i > 0 {
+                out.push(' ');
+            }
+            if self.opts.colors {
+                out.push_str(&apply_style(&seg.text, seg.style.as_ref()));
+            } else {
+                out.push_str(&seg.text);
+            }
+        }
+        out.push('\n');
+        w.write_all(out.as_bytes())
+    }
+}
+
+fn icon_color(record: &LogRecord) -> &'static str {
+    if record.level <= LogLevel::ERROR {
+        "red"
+    } else if record.type_name == "success" {
+        "green"
+    } else if record.type_name == "warn" {
+        "yellow"
+    } else if record.type_name == "info" {
+        "cyan"
+    } else {
+        "magenta"
     }
 }
 
@@ -174,6 +250,14 @@ impl<R: Reporter + 'static> Logger<R> {
 
     pub fn set_level(&mut self, level: LogLevel) {
         self.cfg.level = level;
+    }
+
+    // Temporary accessor needed by tests; future: expose builder pattern.
+    pub fn opts_mut(&mut self) -> &mut FormatOptions
+    where
+        R: ReporterWithOptions,
+    {
+        self.reporter.fmt_options_mut()
     }
 
     pub fn level(&self) -> LogLevel {
@@ -290,6 +374,7 @@ impl<R: Reporter + 'static> Drop for Logger<R> {
 }
 
 pub type BasicLogger = Logger<BasicReporter>;
+pub type FancyLogger = Logger<FancyReporter>;
 
 impl Default for BasicLogger {
     fn default() -> Self {
@@ -302,5 +387,31 @@ impl BasicReporter {
         Self {
             opts: FormatOptions::adaptive(),
         }
+    }
+}
+
+impl FancyReporter {
+    pub fn adaptive() -> Self {
+        Self {
+            opts: FormatOptions::adaptive(),
+        }
+    }
+}
+
+impl ReporterWithOptions for BasicReporter {
+    fn fmt_options(&self) -> &FormatOptions {
+        &self.opts
+    }
+    fn fmt_options_mut(&mut self) -> &mut FormatOptions {
+        &mut self.opts
+    }
+}
+
+impl ReporterWithOptions for FancyReporter {
+    fn fmt_options(&self) -> &FormatOptions {
+        &self.opts
+    }
+    fn fmt_options_mut(&mut self) -> &mut FormatOptions {
+        &mut self.opts
     }
 }

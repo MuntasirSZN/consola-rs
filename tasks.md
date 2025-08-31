@@ -151,7 +151,7 @@ This file is the authoritative actionable task list.
 ## 7. BasicReporter
 
 45. [x] Implement formatting: `[type][tag] message` (box special pending).
-46. [ ] Error formatting (stack indentation).
+46. [x] Error formatting (multi-cause with depth limiting, overflow indicator).
 47. [x] stderr for levels < 2 else stdout.
 48. [ ] Include date when enabled.
         🧪 Tests:
@@ -164,13 +164,13 @@ This file is the authoritative actionable task list.
 
 ## 8. FancyReporter (feature "fancy")
 
-49. [ ] Icon map + ASCII fallback (unicode detection).
+49. [~] Icon map + ASCII fallback (unicode detection) (icon set basic; fallback TBD).
 50. [ ] Badge formatting (bg color + uppercase type).
-51. [ ] Type/level color mapping (info=cyan, success=green, fail/fatal/error=red, warn=yellow).
+51. [x] Type/level color mapping (info=cyan, success=green, fail/fatal/error=red, warn=yellow basic implemented).
 52. [ ] Stack line coloring (gray "at", cyan path).
 53. [ ] Integration with Box (colored frame).
-54. [ ] Repetition suffix dim style.
-55. [ ] Downgrade gracefully if colors disabled.
+54. [x] Repetition suffix dim style.
+55. [~] Downgrade gracefully if colors disabled (basic fallback prints plain text).
         🧪 Tests:
 
 - [ ] Fancy colored snapshot (strip_ansi for compare).
@@ -196,9 +196,9 @@ This file is the authoritative actionable task list.
 
 ## 10. Error Handling & Chain
 
-61. [ ] Extract std::error::Error::source() chain w/ cycle detect (pointer set).
-62. [ ] Depth limit via FormatOptions.error_level.
-63. [ ] Format nested causes with `[cause]:`.
+61. [x] Extract std::error::Error::source() chain w/ cycle detect (pointer set).
+62. [x] Depth limit via FormatOptions.error_level.
+63. [x] Format nested causes with `Caused by:` prefix.
 64. [ ] Multi-line message normalization (indent continuation).
 65. [ ] Provide structured error data to JSON reporter.
         🧪 Tests:

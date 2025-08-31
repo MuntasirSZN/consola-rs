@@ -1,4 +1,3 @@
-use crate::error_chain::format_chain_lines;
 use crate::record::LogRecord;
 use std::env;
 
@@ -153,6 +152,65 @@ pub fn build_basic_segments(record: &LogRecord, opts: &FormatOptions) -> Vec<Seg
     if opts.show_additional {
         if let Some(additional) = &record.additional {
             if !additional.is_empty() {
+                // Stack or error chain
+                if opts.show_stack {
+                    if let Some(stack) = &record.stack {
+                        if !stack.is_empty() {
+                            for (i, line) in stack.iter().enumerate() {
+                                let prefix = if i == 0 { "\n" } else { "" };
+                                v.push(Segment {
+                                    text: format!("{prefix}{line}"),
+                                    style: Some(SegmentStyle {
+                                        fg_color: Some("gray".into()),
+                                        bg_color: None,
+                                        bold: false,
+                                        dim: false,
+                                        italic: false,
+                                        underline: false,
+                                    }),
+                                });
+                            }
+                        }
+                    } else if let Some(chain) = &record.error_chain {
+                        let limited: Vec<String> =
+                            chain.iter().take(opts.error_level).cloned().collect();
+                        for (i, line) in limited.iter().enumerate() {
+                            let prefix = if i == 0 { "\n" } else { "" };
+                            let text = if i == 0 {
+                                line.clone()
+                            } else {
+                                format!("Caused by: {line}")
+                            };
+                            v.push(Segment {
+                                text: format!("{prefix}{text}"),
+                                style: Some(SegmentStyle {
+                                    fg_color: Some("gray".into()),
+                                    bg_color: None,
+                                    bold: false,
+                                    dim: false,
+                                    italic: false,
+                                    underline: false,
+                                }),
+                            });
+                        }
+                        if chain.len() > opts.error_level {
+                            v.push(Segment {
+                                text: format!(
+                                    "\n(+{} more causes)",
+                                    chain.len() - opts.error_level
+                                ),
+                                style: Some(SegmentStyle {
+                                    fg_color: Some("gray".into()),
+                                    bg_color: None,
+                                    bold: false,
+                                    dim: true,
+                                    italic: false,
+                                    underline: false,
+                                }),
+                            });
+                        }
+                    }
+                }
                 let mut out = String::new();
                 out.push(' ');
                 out.push('[');
@@ -201,49 +259,6 @@ pub fn build_basic_segments(record: &LogRecord, opts: &FormatOptions) -> Vec<Seg
                         bg_color: None,
                         bold: false,
                         dim: true,
-                        italic: false,
-                        underline: false,
-                    }),
-                });
-            }
-        }
-    }
-
-    // Stack (multi-line) appended if enabled
-    if opts.show_stack {
-        if let Some(stack) = &record.stack {
-            if !stack.is_empty() {
-                for (i, line) in stack.iter().enumerate() {
-                    let prefix = if i == 0 { "\n" } else { "" };
-                    v.push(Segment {
-                        text: format!("{prefix}{line}"),
-                        style: Some(SegmentStyle {
-                            fg_color: Some("gray".into()),
-                            bg_color: None,
-                            bold: false,
-                            dim: false,
-                            italic: false,
-                            underline: false,
-                        }),
-                    });
-                }
-            }
-        } else if let Some(crate::record::ArgValue::Error(msg)) = record
-            .args
-            .iter()
-            .find(|a| matches!(a, crate::record::ArgValue::Error(_)))
-        {
-            // Build pseudo chain from single error message only (placeholder)
-            let lines = format_chain_lines(&[msg.clone()], opts.error_level);
-            for (i, line) in lines.iter().enumerate() {
-                let prefix = if i == 0 { "\n" } else { "" };
-                v.push(Segment {
-                    text: format!("{prefix}{line}"),
-                    style: Some(SegmentStyle {
-                        fg_color: Some("gray".into()),
-                        bg_color: None,
-                        bold: false,
-                        dim: false,
                         italic: false,
                         underline: false,
                     }),

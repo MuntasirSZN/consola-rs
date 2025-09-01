@@ -93,21 +93,26 @@ impl Reporter for BasicReporter {
 impl Reporter for FancyReporter {
     fn emit(&self, record: &LogRecord, w: &mut dyn Write) -> io::Result<()> {
         let mut segs = build_basic_segments(record, &self.opts);
-        // Prepend icon badge based on type
-        let icon = match record.type_name.as_str() {
-            "info" => Some("ℹ"),
-            "success" => Some("✔"),
-            "error" | "fail" | "fatal" => Some("✖"),
-            "warn" => Some("⚠"),
-            "debug" => Some("🐛"),
-            "trace" => Some("↳"),
-            _ => None,
+        // Prepend icon badge based on type with ASCII fallback
+        let (unicode_icon, ascii_icon) = match record.type_name.as_str() {
+            "info" => ("ℹ", "i"),
+            "success" => ("✔", "+"),
+            "error" | "fail" | "fatal" => ("✖", "x"),
+            "warn" => ("⚠", "!"),
+            "debug" => ("🐛", "d"),
+            "trace" => ("↳", ">"),
+            _ => ("", ""),
         };
-        if let Some(ic) = icon {
+        let chosen_icon = if self.opts.unicode {
+            unicode_icon
+        } else {
+            ascii_icon
+        };
+        if !chosen_icon.is_empty() {
             segs.insert(
                 0,
                 crate::format::Segment {
-                    text: ic.to_string(),
+                    text: chosen_icon.to_string(),
                     style: Some(crate::format::SegmentStyle {
                         fg_color: Some(icon_color(record).to_string()),
                         bg_color: None,
@@ -119,27 +124,89 @@ impl Reporter for FancyReporter {
                 },
             );
         }
+        // Badge formatting: find type segment like "[type]" and uppercase inside
+        if self.opts.show_type {
+            for s in &mut segs {
+                if s.text.starts_with('[') && s.text.ends_with(']') && s.text.len() > 2 {
+                    let inner = &s.text[1..s.text.len() - 1];
+                    // heuristically ensure it matches record.type_name
+                    if inner.eq_ignore_ascii_case(&record.type_name) {
+                        s.text = format!("[{}]", inner.to_ascii_uppercase());
+                        if let Some(style) = &mut s.style {
+                            style.bold = true;
+                            style.fg_color = Some(icon_color(record).to_string());
+                        } else {
+                            s.style = Some(crate::format::SegmentStyle {
+                                fg_color: Some(icon_color(record).to_string()),
+                                bg_color: None,
+                                bold: true,
+                                dim: false,
+                                italic: false,
+                                underline: false,
+                            });
+                        }
+                    }
+                    break;
+                }
+            }
+        }
         // Adjust repetition style to dim fully
         for s in &mut segs {
-            if s.text.starts_with(" (x") {
+            if s.text.starts_with("(x") || s.text.starts_with(" (x") {
                 if let Some(st) = &mut s.style {
                     st.dim = true;
                 }
             }
         }
-        let mut out = String::new();
-        for (i, seg) in segs.iter().enumerate() {
-            if i > 0 {
-                out.push(' ');
+        // Width wrapping similar to BasicReporter
+        let cols = self.opts.columns.or_else(detect_terminal_width);
+        let width = cols.unwrap_or(usize::MAX);
+        if width == usize::MAX || compute_line_width(&segs) <= width {
+            let mut out = String::new();
+            for (i, seg) in segs.iter().enumerate() {
+                if i > 0 {
+                    out.push(' ');
+                }
+                if self.opts.colors {
+                    out.push_str(&apply_style(&seg.text, seg.style.as_ref()));
+                } else {
+                    out.push_str(&seg.text);
+                }
             }
-            if self.opts.colors {
-                out.push_str(&apply_style(&seg.text, seg.style.as_ref()));
-            } else {
-                out.push_str(&seg.text);
+            out.push('\n');
+            w.write_all(out.as_bytes())
+        } else {
+            let mut current = String::new();
+            let mut current_len = 0usize;
+            let mut first_segment = true;
+            for seg in &segs {
+                let raw = &seg.text;
+                let styled = if self.opts.colors {
+                    apply_style(raw, seg.style.as_ref())
+                } else {
+                    raw.clone()
+                };
+                let piece_len = raw.chars().count() + if !first_segment { 1 } else { 0 };
+                if current_len + piece_len > width && !current.is_empty() {
+                    current.push('\n');
+                    w.write_all(current.as_bytes())?;
+                    current.clear();
+                    current_len = 0;
+                    first_segment = true;
+                }
+                if !first_segment {
+                    current.push(' ');
+                    current_len += 1;
+                }
+                current.push_str(&styled);
+                current_len += raw.chars().count();
+                first_segment = false;
             }
+            if !current.ends_with('\n') {
+                current.push('\n');
+            }
+            w.write_all(current.as_bytes())
         }
-        out.push('\n');
-        w.write_all(out.as_bytes())
     }
 }
 

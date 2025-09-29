@@ -34,5 +34,5 @@ jobs:
         run: cargo install cargo-nextest
       - name: run tests
         run: |
-          cargo nextest run --all-features --all-targets --locked --profile ci
+          cargo nextest run --all-features --all-targets --locked
           cargo test --doc --locked

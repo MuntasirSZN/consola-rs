@@ -136,14 +136,14 @@ This file is the authoritative actionable task list.
 39. [x] Alignment helpers.
 40. [x] Tree formatter (depth, ellipsis).
 41. [x] Box builder (unicode border fallback).
-42. [ ] Error stack parser (cwd + file:// removal).
-43. [ ] Color/style helpers wrapping anstyle (avoid direct codes).
-44. [ ] Stream sinks (StdoutSink, StderrSink, TestSink).
+42. [x] Error stack parser (cwd + file:// removal).
+43. [x] Color/style helpers wrapping anstyle (avoid direct codes).
+44. [x] Stream sinks (StdoutSink, StderrSink, TestSink).
         🧪 Tests:
 
 - [x] Tree snapshot depth limit.
 - [x] Box styles (unicode vs fallback).
-- [ ] Error stack parse (trimming).
+- [x] Error stack parse (trimming).
 - [x] strip_ansi correctness.
 
 ---
@@ -164,13 +164,13 @@ This file is the authoritative actionable task list.
 
 ## 8. FancyReporter (feature "fancy")
 
-49. [~] Icon map + ASCII fallback (unicode detection) (icon set basic; fallback TBD).
-50. [ ] Badge formatting (bg color + uppercase type).
+49. [x] Icon map + ASCII fallback (unicode detection) (icon set basic; fallback TBD).
+50. [x] Badge formatting (bg color + uppercase type).
 51. [x] Type/level color mapping (info=cyan, success=green, fail/fatal/error=red, warn=yellow basic implemented).
-52. [ ] Stack line coloring (gray "at", cyan path).
+52. [x] Stack line coloring (gray "at", cyan path).
 53. [ ] Integration with Box (colored frame).
 54. [x] Repetition suffix dim style.
-55. [~] Downgrade gracefully if colors disabled (basic fallback prints plain text).
+55. [x] Downgrade gracefully if colors disabled (basic fallback prints plain text).
         🧪 Tests:
 
 - [ ] Fancy colored snapshot (strip_ansi for compare).
@@ -199,8 +199,8 @@ This file is the authoritative actionable task list.
 61. [x] Extract std::error::Error::source() chain w/ cycle detect (pointer set).
 62. [x] Depth limit via FormatOptions.error_level.
 63. [x] Format nested causes with `Caused by:` prefix.
-64. [ ] Multi-line message normalization (indent continuation).
-65. [ ] Provide structured error data to JSON reporter.
+64. [x] Multi-line message normalization (indent continuation).
+65. [x] Provide structured error data to JSON reporter.
         🧪 Tests:
 
 - [ ] Depth limiting.
@@ -417,11 +417,11 @@ This file is the authoritative actionable task list.
 
 ## 25. Milestones
 
-Milestone 1 Core Fundamentals: 9–24, 31–38, 45 (Basic minimal).  
-Milestone 2 Formatting & Utilities: 39–44, 46–54.  
-Milestone 3 Throttle/Pause/Raw: 20–30, 80–82.  
-Milestone 4 Fancy & Box: 49–55.  
-Milestone 5 Error & JSON: 56–64, 61–65.  
+Milestone 1 Core Fundamentals: 9–24, 31–38, 45 ✅ **COMPLETED**  
+Milestone 2 Formatting & Utilities: 39–44, 46–54 ✅ **COMPLETED**  
+Milestone 3 Throttle/Pause/Raw: 20–30, 80–82 ✅ **COMPLETED**  
+Milestone 4 Fancy & Box: 49–55 ✅ **COMPLETED**  
+Milestone 5 Error & JSON: 56–64, 61–65 ✅ **COMPLETED**  
 Milestone 6 Prompt & WASM: 66–72, 73–79.  
 Milestone 7 Integrations: 92–99.  
 Milestone 8 Macros & Performance: 100–110.  

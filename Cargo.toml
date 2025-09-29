@@ -1,7 +1,6 @@
 [package]
 name = "consola"
 version = "0.0.0-alpha.0"
-authors = ["Muntasir Mahmud <muntasir.joypurhat@gmail.com>"]
 edition = "2024"
 rust-version = "1.85"
 description = "🐨 Elegant Console Logger for Rust and Browser"
@@ -18,52 +17,52 @@ categories = ["development-tools"]
 # placeholder for future nextest config
 
 [dependencies]
-anstream = { version = "0.6", optional = true }
-anstyle = { version = "1", optional = true }
-anyhow = "1"
-blake3 = "1"
-demand = { version = "1.7", optional = true }
+anstream = { version = "0.6.20", optional = true }
+anstyle = { version = "1.0.11", optional = true }
+anyhow = "1.0.100"
+blake3 = "1.8.2"
+demand = { version = "1.7.0", optional = true }
 jiff = "0.2.15"
-log = { version = "0.4", optional = true }
-once_cell = "1"
-parking_lot = "0.12"
-serde = { version = "1", features = ["derive"], optional = true }
-serde_json = { version = "1", optional = true }
-smallvec = { version = "1", features = ["const_new", "union"] }
-strip-ansi-escapes = "0.2"
-thiserror = "2"
-tracing = { version = "0.1", optional = true }
-tracing-subscriber = { version = "0.3", features = [
+log = { version = "0.4.28", optional = true }
+once_cell = "1.21.3"
+parking_lot = "0.12.4"
+serde = { version = "1.0.228", features = ["derive"], optional = true }
+serde_json = { version = "1.0.145", optional = true }
+smallvec = { version = "1.15.1", features = ["const_new", "union"] }
+strip-ansi-escapes = "0.2.1"
+thiserror = "2.0.17"
+tracing = { version = "0.1.41", optional = true }
+tracing-subscriber = { version = "0.3.20", features = [
   "fmt",
   "registry",
 ], optional = true }
-unicode-width = { version = "0.2", optional = true }
-wasm-bindgen = { version = "0.2", optional = true }
+unicode-width = { version = "0.2.1", optional = true }
+wasm-bindgen = { version = "0.2.104", optional = true }
 
 [dev-dependencies]
-assert_fs = "1"
-criterion = { version = "0.7", default-features = false, features = ["rayon"] }
-insta = { version = "1", features = ["yaml"] }
-proptest = "1"
-rstest = "0.26"
-wasm-bindgen-test = { version = "0.3" }
+assert_fs = "1.1.3"
+criterion = { version = "0.7.0", default-features = false, features = ["rayon"] }
+insta = { version = "1.43.2", features = ["yaml"] }
+proptest = "1.8.0"
+rstest = "0.26.1"
+wasm-bindgen-test = { version = "0.3.54" }
 
 [features]
+default = ["color", "fancy"]
 async-reporters = []  # placeholder (post-MVP)
 bridge-log = ["dep:log"]
 bridge-tracing = ["dep:tracing", "dep:tracing-subscriber"]
 color = ["anstream", "anstyle"]
-default = ["color", "fancy"]
 fancy = ["unicode-width"]
 json = ["dep:serde", "dep:serde_json"]
 prompt-demand = ["dep:demand"]
 wasm = ["dep:wasm-bindgen"]
 
-[profile.release]
+[profile.bench]
 lto = true
 codegen-units = 1
 
-[profile.bench]
+[profile.release]
 lto = true
 codegen-units = 1
 

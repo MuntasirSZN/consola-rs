@@ -172,3 +172,174 @@ pub fn align_text(text: &str, width: usize, alignment: Alignment) -> String {
         }
     }
 }
+
+/// Error stack parser with cwd and file:// removal
+pub fn parse_error_stack(input: &str) -> Vec<String> {
+    let current_dir = std::env::current_dir()
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_default();
+
+    input
+        .lines()
+        .map(|line| {
+            let line = line.trim();
+            // Remove file:// prefix if present
+            let line = if let Some(stripped) = line.strip_prefix("file://") {
+                stripped
+            } else {
+                line
+            };
+
+            // Remove current working directory from absolute paths
+            if !current_dir.is_empty() && line.starts_with(&current_dir) {
+                let relative = line
+                    .strip_prefix(&current_dir)
+                    .unwrap_or(line)
+                    .trim_start_matches('/');
+                if relative.is_empty() {
+                    ".".to_string()
+                } else {
+                    relative.to_string()
+                }
+            } else {
+                line.to_string()
+            }
+        })
+        .collect()
+}
+
+/// Stream sinks for output routing
+use std::io::{self, Write};
+
+#[cfg(feature = "color")]
+use anstyle::{Color, Style};
+
+/// Color/style helper functions wrapping anstyle
+#[cfg(feature = "color")]
+pub mod style {
+    use super::*;
+
+    /// Create a colored text string
+    pub fn colored(text: &str, color: Color) -> String {
+        let style = Style::new().fg_color(Some(color));
+        format!("{}{}{}", style.render(), text, Style::new().render())
+    }
+
+    /// Create dim/faded text
+    pub fn dim(text: &str) -> String {
+        let style = Style::new().dimmed();
+        format!("{}{}{}", style.render(), text, Style::new().render())
+    }
+
+    /// Create bold text
+    pub fn bold(text: &str) -> String {
+        let style = Style::new().bold();
+        format!("{}{}{}", style.render(), text, Style::new().render())
+    }
+
+    /// Predefined colors for log levels
+    pub fn info_color() -> Color {
+        Color::Ansi(anstyle::AnsiColor::Cyan)
+    }
+
+    pub fn success_color() -> Color {
+        Color::Ansi(anstyle::AnsiColor::Green)
+    }
+
+    pub fn warn_color() -> Color {
+        Color::Ansi(anstyle::AnsiColor::Yellow)
+    }
+
+    pub fn error_color() -> Color {
+        Color::Ansi(anstyle::AnsiColor::Red)
+    }
+
+    pub fn debug_color() -> Color {
+        Color::Ansi(anstyle::AnsiColor::Magenta)
+    }
+
+    pub fn trace_color() -> Color {
+        Color::Ansi(anstyle::AnsiColor::Blue)
+    }
+}
+
+#[cfg(not(feature = "color"))]
+pub mod style {
+    /// No-op implementations when color feature is disabled
+    pub fn colored(text: &str, _color: ()) -> String {
+        text.to_string()
+    }
+
+    pub fn dim(text: &str) -> String {
+        text.to_string()
+    }
+
+    pub fn bold(text: &str) -> String {
+        text.to_string()
+    }
+}
+
+pub trait Sink: Send + Sync {
+    fn write_all(&self, buf: &[u8]) -> io::Result<()>;
+    fn flush(&self) -> io::Result<()>;
+}
+
+pub struct StdoutSink;
+impl Sink for StdoutSink {
+    fn write_all(&self, buf: &[u8]) -> io::Result<()> {
+        io::stdout().write_all(buf)
+    }
+
+    fn flush(&self) -> io::Result<()> {
+        io::stdout().flush()
+    }
+}
+
+pub struct StderrSink;
+impl Sink for StderrSink {
+    fn write_all(&self, buf: &[u8]) -> io::Result<()> {
+        io::stderr().write_all(buf)
+    }
+
+    fn flush(&self) -> io::Result<()> {
+        io::stderr().flush()
+    }
+}
+
+pub struct TestSink {
+    buffer: parking_lot::Mutex<Vec<u8>>,
+}
+
+impl TestSink {
+    pub fn new() -> Self {
+        Self {
+            buffer: parking_lot::Mutex::new(Vec::new()),
+        }
+    }
+
+    pub fn contents(&self) -> String {
+        let buffer = self.buffer.lock();
+        String::from_utf8_lossy(&buffer).into_owned()
+    }
+
+    pub fn clear(&self) {
+        self.buffer.lock().clear();
+    }
+}
+
+impl Default for TestSink {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Sink for TestSink {
+    fn write_all(&self, buf: &[u8]) -> io::Result<()> {
+        self.buffer.lock().extend_from_slice(buf);
+        Ok(())
+    }
+
+    fn flush(&self) -> io::Result<()> {
+        Ok(())
+    }
+}

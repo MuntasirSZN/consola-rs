@@ -124,21 +124,22 @@ impl Reporter for FancyReporter {
                 },
             );
         }
-        // Badge formatting: find type segment like "[type]" and uppercase inside
+        // Badge formatting: find type segment like "[type]" and uppercase inside with background color
         if self.opts.show_type {
             for s in &mut segs {
                 if s.text.starts_with('[') && s.text.ends_with(']') && s.text.len() > 2 {
                     let inner = &s.text[1..s.text.len() - 1];
                     // heuristically ensure it matches record.type_name
                     if inner.eq_ignore_ascii_case(&record.type_name) {
-                        s.text = format!("[{}]", inner.to_ascii_uppercase());
+                        s.text = format!(" {} ", inner.to_ascii_uppercase());
                         if let Some(style) = &mut s.style {
                             style.bold = true;
-                            style.fg_color = Some(icon_color(record).to_string());
+                            style.fg_color = Some("white".to_string());
+                            style.bg_color = Some(badge_bg_color(record).to_string());
                         } else {
                             s.style = Some(crate::format::SegmentStyle {
-                                fg_color: Some(icon_color(record).to_string()),
-                                bg_color: None,
+                                fg_color: Some("white".to_string()),
+                                bg_color: Some(badge_bg_color(record).to_string()),
                                 bold: true,
                                 dim: false,
                                 italic: false,
@@ -211,16 +212,26 @@ impl Reporter for FancyReporter {
 }
 
 fn icon_color(record: &LogRecord) -> &'static str {
-    if record.level <= LogLevel::ERROR {
-        "red"
-    } else if record.type_name == "success" {
-        "green"
-    } else if record.type_name == "warn" {
-        "yellow"
-    } else if record.type_name == "info" {
-        "cyan"
-    } else {
-        "magenta"
+    match record.type_name.as_str() {
+        "error" | "fail" | "fatal" => "red",
+        "success" => "green",
+        "warn" => "yellow",
+        "info" => "cyan",
+        "debug" => "magenta",
+        "trace" => "blue",
+        _ => "white",
+    }
+}
+
+fn badge_bg_color(record: &LogRecord) -> &'static str {
+    match record.type_name.as_str() {
+        "error" | "fail" | "fatal" => "bg_red",
+        "success" => "bg_green",
+        "warn" => "bg_yellow",
+        "info" => "bg_cyan",
+        "debug" => "bg_magenta",
+        "trace" => "bg_blue",
+        _ => "bg_white",
     }
 }
 
@@ -410,6 +421,31 @@ impl<R: Reporter + 'static> Logger<R> {
         self.log_raw(type_name, None, message);
     }
 
+    // Convenience methods for formatted logging
+    pub fn info<T: ToString>(&mut self, message: T) {
+        self.log("info", None, [message.to_string()]);
+    }
+
+    pub fn warn<T: ToString>(&mut self, message: T) {
+        self.log("warn", None, [message.to_string()]);
+    }
+
+    pub fn error<T: ToString>(&mut self, message: T) {
+        self.log("error", None, [message.to_string()]);
+    }
+
+    pub fn success<T: ToString>(&mut self, message: T) {
+        self.log("success", None, [message.to_string()]);
+    }
+
+    pub fn debug<T: ToString>(&mut self, message: T) {
+        self.log("debug", None, [message.to_string()]);
+    }
+
+    pub fn trace<T: ToString>(&mut self, message: T) {
+        self.log("trace", None, [message.to_string()]);
+    }
+
     fn passes_level(&self, record: &LogRecord) -> bool {
         record.level <= self.cfg.level
     }
@@ -500,6 +536,12 @@ impl FancyReporter {
         Self {
             opts: FormatOptions::adaptive(),
         }
+    }
+}
+
+impl Default for FancyReporter {
+    fn default() -> Self {
+        Self::adaptive()
     }
 }
 

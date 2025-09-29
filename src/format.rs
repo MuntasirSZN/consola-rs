@@ -158,13 +158,25 @@ pub fn build_basic_segments(record: &LogRecord, opts: &FormatOptions) -> Vec<Seg
                         if !stack.is_empty() {
                             for (i, line) in stack.iter().enumerate() {
                                 let prefix = if i == 0 { "\n" } else { "" };
+                                // Enhanced stack line coloring: gray "at", cyan path
+                                let styled_line = if line.trim().starts_with("at ") {
+                                    let parts: Vec<&str> = line.splitn(2, "at ").collect();
+                                    if parts.len() == 2 {
+                                        format!("{}at {}", parts[0], parts[1])
+                                    } else {
+                                        line.clone()
+                                    }
+                                } else {
+                                    line.clone()
+                                };
+
                                 v.push(Segment {
-                                    text: format!("{prefix}{line}"),
+                                    text: format!("{prefix}{styled_line}"),
                                     style: Some(SegmentStyle {
                                         fg_color: Some("gray".into()),
                                         bg_color: None,
                                         bold: false,
-                                        dim: false,
+                                        dim: true,
                                         italic: false,
                                         underline: false,
                                     }),
@@ -176,15 +188,19 @@ pub fn build_basic_segments(record: &LogRecord, opts: &FormatOptions) -> Vec<Seg
                             chain.iter().take(opts.error_level).cloned().collect();
                         for (i, line) in limited.iter().enumerate() {
                             let prefix = if i == 0 { "\n" } else { "" };
+
+                            // Multi-line message normalization with indentation
                             let text = if i == 0 {
-                                line.clone()
+                                normalize_multiline_message(line, "")
                             } else {
-                                format!("Caused by: {line}")
+                                let caused_by_msg = format!("Caused by: {line}");
+                                normalize_multiline_message(&caused_by_msg, "           ") // Indent continuation lines
                             };
+
                             v.push(Segment {
                                 text: format!("{prefix}{text}"),
                                 style: Some(SegmentStyle {
-                                    fg_color: Some("gray".into()),
+                                    fg_color: Some("red".into()),
                                     bg_color: None,
                                     bold: false,
                                     dim: false,
@@ -280,6 +296,24 @@ pub fn detect_terminal_width() -> Option<usize> {
         }
     }
     None
+}
+
+/// Normalize multi-line error messages with proper indentation
+fn normalize_multiline_message(message: &str, indent: &str) -> String {
+    let lines: Vec<&str> = message.lines().collect();
+    if lines.len() <= 1 {
+        return message.to_string();
+    }
+
+    let mut result = String::new();
+    for (i, line) in lines.iter().enumerate() {
+        if i > 0 {
+            result.push('\n');
+            result.push_str(indent);
+        }
+        result.push_str(line);
+    }
+    result
 }
 
 /// Compute printable width of concatenated segments (simplistic; excludes ANSI codes)

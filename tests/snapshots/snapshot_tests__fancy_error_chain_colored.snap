@@ -2,4 +2,4 @@
 source: tests/snapshot_tests.rs
 expression: colored
 ---
-[31;1m✖[0m [31;1m[ERROR][0m processing failed top context
+[31;1m✖[0m [1m ERROR [0m processing failed top context

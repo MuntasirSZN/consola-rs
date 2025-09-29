@@ -2,4 +2,4 @@
 source: tests/snapshot_tests.rs
 expression: colored
 ---
-[36;1mℹ[0m [36;1m[INFO][0m hello world
+[36;1mℹ[0m [1m INFO [0m hello world

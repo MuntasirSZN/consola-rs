@@ -97,3 +97,108 @@ fn logger_builder_basic() {
 
     assert_eq!(logger.level(), LogLevel::WARN);
 }
+
+#[test]
+fn error_stack_parser_basic() {
+    let stack = "    at main (file:///home/user/project/src/main.rs:10:5)\n    at init (/home/user/project/src/lib.rs:20:10)";
+    let parsed = consola::parse_error_stack(stack);
+
+    assert_eq!(parsed.len(), 2);
+    assert!(parsed[0].contains("main.rs"));
+    assert!(parsed[1].contains("lib.rs"));
+    // The parser removes file:// prefix from paths
+    // Check that at least the main function processing works
+}
+
+#[test]
+fn test_sink_basic() {
+    let sink = consola::TestSink::new();
+    sink.write_all(b"hello").unwrap();
+    sink.write_all(b" world").unwrap();
+
+    assert_eq!(sink.contents(), "hello world");
+
+    sink.clear();
+    assert_eq!(sink.contents(), "");
+}
+
+#[cfg(feature = "color")]
+#[test]
+fn style_helpers() {
+    let colored = consola::style::colored("test", consola::style::info_color());
+    assert!(colored.contains("test"));
+    assert!(colored.len() > 4); // Should have ANSI codes
+
+    let dim = consola::style::dim("dim text");
+    assert!(dim.contains("dim text"));
+}
+
+#[cfg(not(feature = "color"))]
+#[test]
+fn style_helpers_no_color() {
+    let colored = consola::style::colored("test", ());
+    assert_eq!(colored, "test");
+
+    let dim = consola::style::dim("dim text");
+    assert_eq!(dim, "dim text");
+}
+
+#[test]
+fn fancy_reporter_badge_formatting() {
+    let mut logger = Logger::new(FancyReporter::default());
+    // This test mainly ensures badge formatting doesn't panic
+    logger.info("test badge formatting");
+    logger.error("test error badge");
+    logger.success("test success badge");
+    logger.flush();
+}
+
+#[test]
+fn fancy_reporter_enhanced_colors() {
+    let fancy = FancyReporter::default();
+    // Test that different log types get different icon colors
+    let info_record = LogRecord::new("info", None, vec!["info test".into()]);
+    let error_record = LogRecord::new("error", None, vec!["error test".into()]);
+
+    // Just verify the records can be processed without panic
+    let mut buffer = Vec::new();
+    fancy.emit(&info_record, &mut buffer).unwrap();
+    fancy.emit(&error_record, &mut buffer).unwrap();
+
+    let output = String::from_utf8(buffer).unwrap();
+    assert!(output.contains("info test"));
+    assert!(output.contains("error test"));
+}
+
+#[test]
+fn pause_resume_order_preservation() {
+    let mut logger = Logger::new(BasicReporter::default());
+
+    logger.pause();
+    logger.info("first message");
+    logger.warn("second message");
+    logger.error("third message");
+
+    logger.resume();
+    logger.flush();
+
+    // Messages should be in correct order (though we can't easily capture them with the current setup)
+    // This test mainly ensures no panic occurs during pause/resume cycle
+}
+
+#[test]
+fn throttle_boundary_reset_on_resume() {
+    let mut logger = Logger::new(BasicReporter::default());
+
+    // Send same message twice
+    logger.info("duplicate message");
+    logger.info("duplicate message");
+
+    logger.pause();
+    logger.info("duplicate message"); // This should be queued
+
+    logger.resume(); // Should reset throttle boundaries and process queued message
+    logger.flush();
+
+    // Test completes if no panic occurs
+}

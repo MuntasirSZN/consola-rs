@@ -3,12 +3,15 @@ use std::fmt;
 use std::time::Instant;
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "json", derive(serde::Serialize, serde::Deserialize))]
 pub enum ArgValue {
     String(String),
     Number(f64),
     Bool(bool),
     Error(String),
     OtherDebug(String),
+    #[cfg(feature = "json")]
+    Json(serde_json::Value),
 }
 
 impl From<&str> for ArgValue {
@@ -54,7 +57,16 @@ impl fmt::Display for ArgValue {
             ArgValue::Bool(b) => write!(f, "{b}"),
             ArgValue::Error(e) => write!(f, "{e}"),
             ArgValue::OtherDebug(d) => write!(f, "{d}"),
+            #[cfg(feature = "json")]
+            ArgValue::Json(v) => write!(f, "{v}"),
         }
+    }
+}
+
+#[cfg(feature = "json")]
+impl From<serde_json::Value> for ArgValue {
+    fn from(v: serde_json::Value) -> Self {
+        Self::Json(v)
     }
 }
 
@@ -176,6 +188,64 @@ impl LogRecord {
         self.message = build_message(&self.args);
         self
     }
+
+    /// Merge default values into this record. Existing values take precedence.
+    pub fn merge_defaults(mut self, defaults: &RecordDefaults) -> Self {
+        // Tag: use existing or default
+        if self.tag.is_none() && defaults.tag.is_some() {
+            self.tag = defaults.tag.clone();
+        }
+        
+        // Additional: merge with defaults (record's additional takes precedence)
+        if let Some(default_additional) = &defaults.additional {
+            match &mut self.additional {
+                Some(existing) => {
+                    // Prepend defaults (record's values have priority)
+                    let mut merged = default_additional.clone();
+                    merged.extend(existing.iter().cloned());
+                    *existing = merged;
+                }
+                None => {
+                    self.additional = Some(default_additional.clone());
+                }
+            }
+        }
+        
+        // Meta: merge with defaults (record's meta takes precedence)
+        if let Some(default_meta) = &defaults.meta {
+            match &mut self.meta {
+                Some(existing) => {
+                    // Build a map to deduplicate by key, record values win
+                    let mut meta_map: std::collections::HashMap<String, ArgValue> = 
+                        default_meta.iter().cloned().collect();
+                    for (k, v) in existing.iter() {
+                        meta_map.insert(k.clone(), v.clone());
+                    }
+                    *existing = meta_map.into_iter().collect();
+                }
+                None => {
+                    self.meta = Some(default_meta.clone());
+                }
+            }
+        }
+        
+        self
+    }
+
+    /// Normalize arguments to handle various input types (simplified version)
+    pub fn normalize_args(args: Vec<ArgValue>) -> Vec<ArgValue> {
+        // For now, just return as-is. In a full implementation, this would
+        // handle object-like structures, nested errors, etc.
+        args
+    }
+}
+
+/// Default values that can be merged into log records
+#[derive(Debug, Clone, Default)]
+pub struct RecordDefaults {
+    pub tag: Option<String>,
+    pub additional: Option<Vec<ArgValue>>,
+    pub meta: Option<Vec<(String, ArgValue)>>,
 }
 
 fn build_message(args: &[ArgValue]) -> Option<String> {

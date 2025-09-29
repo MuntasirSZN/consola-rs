@@ -70,14 +70,14 @@ This file is the authoritative actionable task list.
 
 15. [x] Define LogRecord { timestamp, level, type_name, tag, args, message?, repetition_count } (partial; additional/raw/meta/error_chain_depth pending).
 16. [x] ArgValue enum (String, Number, Bool, Error, OtherDebug) (Json variant pending feature).
-17. [ ] Normalization: object vs primitive vs error (mimic JS flexible call forms).
-18. [ ] Merge defaults (tag, additional, meta).
-19. [ ] JSON serialization (feature "json").
+17. [x] Normalization: object vs primitive vs error (mimic JS flexible call forms).
+18. [x] Merge defaults (tag, additional, meta).
+19. [x] JSON serialization (feature "json").
         🧪 Tests:
 
-- [ ] Primitive + error mix.
-- [ ] Default merge precedence.
-- [ ] JSON output attributes ordering (snapshot).
+- [x] Primitive + error mix.
+- [x] Default merge precedence.
+- [x] JSON output attributes ordering (snapshot).
 
 ---
 
@@ -133,18 +133,18 @@ This file is the authoritative actionable task list.
 ## 6. Utilities
 
 38. [x] strip_ansi (using external crate `strip-ansi-escapes`).
-39. [ ] Alignment helpers.
-40. [ ] Tree formatter (depth, ellipsis).
-41. [ ] Box builder (unicode border fallback).
+39. [x] Alignment helpers.
+40. [x] Tree formatter (depth, ellipsis).
+41. [x] Box builder (unicode border fallback).
 42. [ ] Error stack parser (cwd + file:// removal).
 43. [ ] Color/style helpers wrapping anstyle (avoid direct codes).
 44. [ ] Stream sinks (StdoutSink, StderrSink, TestSink).
         🧪 Tests:
 
-- [ ] Tree snapshot depth limit.
-- [ ] Box styles (unicode vs fallback).
+- [x] Tree snapshot depth limit.
+- [x] Box styles (unicode vs fallback).
 - [ ] Error stack parse (trimming).
-- [ ] strip_ansi correctness.
+- [x] strip_ansi correctness.
 
 ---
 
@@ -181,16 +181,16 @@ This file is the authoritative actionable task list.
 
 ## 9. JSON Reporter (feature "json")
 
-56. [ ] Schema: { time, level, level_name, type, tag, message, args, additional, repeat?, stack?, causes?, meta?, schema:"consola-rs/v1" }.
-57. [ ] Serialize to single line (no trailing spaces).
-58. [ ] Error chain structured array (causes).
-59. [ ] Deterministic key order.
-60. [ ] Option disable time (FormatOptions.date=false).
+56. [x] Schema: { time, level, level_name, type, tag, message, args, additional, repeat?, stack?, causes?, meta?, schema:"consola-rs/v1" }.
+57. [x] Serialize to single line (no trailing spaces).
+58. [x] Error chain structured array (causes).
+59. [x] Deterministic key order.
+60. [x] Option disable time (FormatOptions.date=false).
         🧪 Tests:
 
-- [ ] Snapshot basic record.
-- [ ] With repetition.
-- [ ] Error chain serialization.
+- [x] Snapshot basic record.
+- [x] With repetition.
+- [x] Error chain serialization.
 
 ---
 
@@ -245,13 +245,13 @@ This file is the authoritative actionable task list.
 
 ## 13. Raw Logging Path
 
-80. [ ] Per-type \*\_raw() methods + generic log_type_raw().
-81. [ ] Raw path still subject to level filter & throttle.
-82. [ ] Fingerprint strategy same as formatted (document).
+80. [x] Per-type \*\_raw() methods + generic log_type_raw().
+81. [x] Raw path still subject to level filter & throttle.
+82. [x] Fingerprint strategy same as formatted (document).
         🧪 Tests:
 
-- [ ] Raw output minimal.
-- [ ] Raw repetition aggregated.
+- [x] Raw output minimal.
+- [x] Raw repetition aggregated.
 
 ---
 
@@ -270,9 +270,9 @@ This file is the authoritative actionable task list.
 
 ## 15. Config & Environment
 
-87. [ ] LoggerBuilder with defaults.
-88. [ ] from_env() reading: CONSOLA_LEVEL, NO_COLOR, CONSOLA_COMPACT.
-89. [ ] Precedence: builder > env > defaults.
+87. [x] LoggerBuilder with defaults.
+88. [~] from_env() reading: CONSOLA_LEVEL, NO_COLOR, CONSOLA_COMPACT. (CONSOLA_LEVEL implemented; NO_COLOR and CONSOLA_COMPACT in FormatOptions.adaptive())
+89. [x] Precedence: builder > env > defaults.
 90. [ ] Option force_simple_width bool.
 91. [ ] Document unstable feature toggles (async-reporters etc).
         🧪 Tests:

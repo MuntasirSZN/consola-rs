@@ -640,7 +640,7 @@ impl Reporter for JsonReporter {
         
         // Serialize to single line (compact)
         let json_str = serde_json::to_string(&Value::Object(obj))
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            .map_err(io::Error::other)?;
         
         writeln!(w, "{}", json_str)
     }

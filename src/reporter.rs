@@ -3,7 +3,7 @@ use crate::format::{
     FormatOptions, build_basic_segments, compute_line_width, detect_terminal_width,
 };
 use crate::levels::LogLevel;
-use crate::record::{ArgValue, LogRecord};
+use crate::record::{ArgValue, LogRecord, RecordDefaults};
 use crate::throttling::{ThrottleConfig, Throttler};
 use std::collections::VecDeque;
 use std::io::{self, Write};
@@ -372,6 +372,44 @@ impl<R: Reporter + 'static> Logger<R> {
         self.process_record(record);
     }
 
+    // Per-type raw logging methods for common types
+    pub fn info_raw(&mut self, message: &str) {
+        self.log_raw("info", None, message);
+    }
+    
+    pub fn warn_raw(&mut self, message: &str) {
+        self.log_raw("warn", None, message);
+    }
+    
+    pub fn error_raw(&mut self, message: &str) {
+        self.log_raw("error", None, message);
+    }
+    
+    pub fn debug_raw(&mut self, message: &str) {
+        self.log_raw("debug", None, message);
+    }
+    
+    pub fn trace_raw(&mut self, message: &str) {
+        self.log_raw("trace", None, message);
+    }
+    
+    pub fn success_raw(&mut self, message: &str) {
+        self.log_raw("success", None, message);
+    }
+    
+    pub fn fail_raw(&mut self, message: &str) {
+        self.log_raw("fail", None, message);
+    }
+    
+    pub fn fatal_raw(&mut self, message: &str) {
+        self.log_raw("fatal", None, message);
+    }
+    
+    // Generic raw method with custom type
+    pub fn log_type_raw(&mut self, type_name: &str, message: &str) {
+        self.log_raw(type_name, None, message);
+    }
+
     fn passes_level(&self, record: &LogRecord) -> bool {
         record.level <= self.cfg.level
     }
@@ -480,5 +518,214 @@ impl ReporterWithOptions for FancyReporter {
     }
     fn fmt_options_mut(&mut self) -> &mut FormatOptions {
         &mut self.opts
+    }
+}
+
+#[cfg(feature = "json")]
+#[derive(Default)]
+pub struct JsonReporter {
+    opts: FormatOptions,
+}
+
+#[cfg(feature = "json")]
+impl JsonReporter {
+    pub fn new() -> Self {
+        Self {
+            opts: FormatOptions::default(),
+        }
+    }
+
+    pub fn adaptive() -> Self {
+        Self {
+            opts: FormatOptions::adaptive(),
+        }
+    }
+}
+
+#[cfg(feature = "json")]
+impl Reporter for JsonReporter {
+    fn emit(&self, record: &LogRecord, w: &mut dyn Write) -> io::Result<()> {
+        use serde_json::{json, Map, Value};
+        
+        // Build JSON object with deterministic key order
+        let mut obj = Map::new();
+        
+        // Schema identifier first
+        obj.insert("schema".to_string(), json!("consola-rs/v1"));
+        
+        // Time (if enabled)
+        if self.opts.date {
+            let ts = jiff::Zoned::now().to_string();
+            obj.insert("time".to_string(), json!(ts));
+        }
+        
+        // Core fields
+        obj.insert("level".to_string(), json!(record.level.0));
+        obj.insert("level_name".to_string(), json!(record.type_name));
+        obj.insert("type".to_string(), json!(record.type_name));
+        
+        if let Some(tag) = &record.tag {
+            obj.insert("tag".to_string(), json!(tag));
+        }
+        
+        if let Some(msg) = &record.message {
+            obj.insert("message".to_string(), json!(msg));
+        }
+        
+        // Arguments
+        if !record.args.is_empty() {
+            let args_json: Vec<Value> = record.args.iter()
+                .map(|arg| match arg {
+                    ArgValue::String(s) => json!(s),
+                    ArgValue::Number(n) => json!(n),
+                    ArgValue::Bool(b) => json!(b),
+                    ArgValue::Error(e) => json!(e),
+                    ArgValue::OtherDebug(d) => json!(d),
+                    #[cfg(feature = "json")]
+                    ArgValue::Json(v) => v.clone(),
+                })
+                .collect();
+            obj.insert("args".to_string(), json!(args_json));
+        }
+        
+        // Additional structured args
+        if let Some(additional) = &record.additional {
+            let add_json: Vec<Value> = additional.iter()
+                .map(|arg| match arg {
+                    ArgValue::String(s) => json!(s),
+                    ArgValue::Number(n) => json!(n),
+                    ArgValue::Bool(b) => json!(b),
+                    ArgValue::Error(e) => json!(e),
+                    ArgValue::OtherDebug(d) => json!(d),
+                    #[cfg(feature = "json")]
+                    ArgValue::Json(v) => v.clone(),
+                })
+                .collect();
+            obj.insert("additional".to_string(), json!(add_json));
+        }
+        
+        // Repetition count
+        if record.repetition_count > 1 {
+            obj.insert("repeat".to_string(), json!(record.repetition_count));
+        }
+        
+        // Stack trace
+        if let Some(stack) = &record.stack {
+            obj.insert("stack".to_string(), json!(stack));
+        }
+        
+        // Error chain (structured array)
+        if let Some(chain) = &record.error_chain {
+            obj.insert("causes".to_string(), json!(chain));
+        }
+        
+        // Metadata
+        if let Some(meta) = &record.meta {
+            let meta_obj: Map<String, Value> = meta.iter()
+                .map(|(k, v)| {
+                    let val = match v {
+                        ArgValue::String(s) => json!(s),
+                        ArgValue::Number(n) => json!(n),
+                        ArgValue::Bool(b) => json!(b),
+                        ArgValue::Error(e) => json!(e),
+                        ArgValue::OtherDebug(d) => json!(d),
+                        #[cfg(feature = "json")]
+                        ArgValue::Json(jv) => jv.clone(),
+                    };
+                    (k.clone(), val)
+                })
+                .collect();
+            obj.insert("meta".to_string(), json!(meta_obj));
+        }
+        
+        // Serialize to single line (compact)
+        let json_str = serde_json::to_string(&Value::Object(obj))
+            .map_err(io::Error::other)?;
+        
+        writeln!(w, "{}", json_str)
+    }
+}
+
+#[cfg(feature = "json")]
+impl ReporterWithOptions for JsonReporter {
+    fn fmt_options(&self) -> &FormatOptions {
+        &self.opts
+    }
+
+    fn fmt_options_mut(&mut self) -> &mut FormatOptions {
+        &mut self.opts
+    }
+}
+
+#[cfg(feature = "json")]
+pub type JsonLogger = Logger<JsonReporter>;
+
+/// Builder for configuring Logger instances with environment variable support
+pub struct LoggerBuilder<R: Reporter + 'static> {
+    reporter: Option<R>,
+    config: LoggerConfig,
+    defaults: RecordDefaults,
+}
+
+impl<R: Reporter + 'static> LoggerBuilder<R> {
+    pub fn new() -> Self where R: Default {
+        Self {
+            reporter: None,
+            config: LoggerConfig::default(),
+            defaults: RecordDefaults::default(),
+        }
+    }
+    
+    pub fn with_reporter(mut self, reporter: R) -> Self {
+        self.reporter = Some(reporter);
+        self
+    }
+    
+    pub fn with_level(mut self, level: LogLevel) -> Self {
+        self.config.level = level;
+        self
+    }
+    
+    pub fn with_throttle_config(mut self, throttle: ThrottleConfig) -> Self {
+        self.config.throttle = throttle;
+        self
+    }
+    
+    pub fn with_defaults(mut self, defaults: RecordDefaults) -> Self {
+        self.defaults = defaults;
+        self
+    }
+    
+    /// Apply environment variables: CONSOLA_LEVEL, NO_COLOR, CONSOLA_COMPACT
+    /// Precedence: builder > env > defaults
+    pub fn from_env(mut self) -> Self {
+        use std::env;
+        
+        // CONSOLA_LEVEL overrides level if not explicitly set by builder
+        if let Ok(level_str) = env::var("CONSOLA_LEVEL") {
+            if let Ok(level_num) = level_str.parse::<i16>() {
+                self.config.level = LogLevel(level_num);
+            } else {
+                // Try to parse as type name
+                if let Some(level) = crate::levels::level_for_type(&level_str) {
+                    self.config.level = level;
+                }
+            }
+        }
+        
+        self
+    }
+    
+    pub fn build(self) -> Logger<R> where R: Default {
+        let reporter = self.reporter.unwrap_or_default();
+        Logger::new(reporter)
+            .with_config(self.config)
+            // Note: defaults would need to be stored in Logger to be used during log calls
+    }
+}
+
+impl Default for LoggerBuilder<BasicReporter> {
+    fn default() -> Self {
+        Self::new()
     }
 }

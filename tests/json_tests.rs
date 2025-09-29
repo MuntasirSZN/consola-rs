@@ -7,11 +7,11 @@ fn json_basic_record() {
     let reporter = JsonReporter::new();
     let mut logger = JsonLogger::new(reporter);
     logger.opts_mut().date = false; // deterministic
-    
+
     // Test basic log
     logger.log("info", None, ["hello world"]);
     logger.flush();
-    
+
     // Test with tag
     logger.log("error", Some("test".to_string()), ["failed"]);
     logger.flush();
@@ -21,16 +21,16 @@ fn json_basic_record() {
 #[test]
 fn json_error_chain_serialization() {
     use anyhow::anyhow;
-    
+
     let reporter = JsonReporter::new();
     let mut logger = JsonLogger::new(reporter);
     logger.opts_mut().date = false;
-    
+
     let err = anyhow!("root cause").context("intermediate").context("top");
     let mut record = LogRecord::new("error", None, vec!["processing failed".into()]);
     let err_ref: &(dyn std::error::Error + 'static) = err.as_ref();
     record = record.attach_dyn_error(err_ref);
-    
+
     // Verify error chain is present
     assert!(record.error_chain.is_some());
     assert!(!record.error_chain.as_ref().unwrap().is_empty());
@@ -42,7 +42,7 @@ fn json_repetition_handling() {
     let reporter = JsonReporter::new();
     let mut logger = JsonLogger::new(reporter);
     logger.opts_mut().date = false;
-    
+
     // Create repeated records
     for _ in 0..3 {
         logger.log("info", None, ["repeated message"]);
@@ -62,7 +62,7 @@ fn metadata_merge_precedence() {
             ("shared-key".to_string(), "default-shared".into()),
         ]),
     };
-    
+
     let record = LogRecord::new("info", None, vec!["test message".into()])
         .with_additional(vec!["record-arg".into()])
         .with_meta(vec![
@@ -70,16 +70,16 @@ fn metadata_merge_precedence() {
             ("shared-key".to_string(), "record-shared".into()), // This should win
         ])
         .merge_defaults(&defaults);
-    
+
     // Should have tag from defaults
     assert_eq!(record.tag, Some("default-tag".to_string()));
-    
+
     // Should have merged additional args (defaults first)
     assert!(record.additional.is_some());
     let additional = record.additional.unwrap();
     assert_eq!(additional.len(), 2);
     assert_eq!(additional[0], "default-arg".into());
-    
+
     // Should have merged meta with record values taking precedence
     assert!(record.meta.is_some());
     let meta = record.meta.unwrap();

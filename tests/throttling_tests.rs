@@ -104,31 +104,47 @@ fn mixed_raw_formatted_same_fingerprint() {
     });
     let base = Instant::now();
     let mut emitted = Vec::new();
-    
+
     // Create formatted record that produces message "test message"
     let formatted = LogRecord::new_with_timestamp("info", None, vec!["test message".into()], base);
     t.on_record(formatted, |r| emitted.push(r.clone()));
     assert_eq!(emitted.len(), 1);
-    
+
     // Create raw record with same message content
-    let raw = LogRecord::raw("info", None, "test message", base + Duration::from_millis(10));
+    let raw = LogRecord::raw(
+        "info",
+        None,
+        "test message",
+        base + Duration::from_millis(10),
+    );
     t.on_record(raw, |r| emitted.push(r.clone()));
-    
+
     // Should NOT be throttled together - they have different fingerprints
     assert_eq!(emitted.len(), 2);
     assert_eq!(emitted[0].repetition_count, 1);
     assert_eq!(emitted[1].repetition_count, 1);
-    
-    // Verify fingerprints are different  
+
+    // Verify fingerprints are different
     let fp1 = Throttler::fingerprint(&emitted[0]);
     let fp2 = Throttler::fingerprint(&emitted[1]);
-    assert_ne!(fp1, fp2, "Raw and formatted records have different fingerprints");
-    
+    assert_ne!(
+        fp1, fp2,
+        "Raw and formatted records have different fingerprints"
+    );
+
     // Test that identical raw records are throttled together
-    let raw2 = LogRecord::raw("info", None, "test message", base + Duration::from_millis(20));
+    let raw2 = LogRecord::raw(
+        "info",
+        None,
+        "test message",
+        base + Duration::from_millis(20),
+    );
     t.on_record(raw2, |r| emitted.push(r.clone()));
-    
+
     // This should be throttled with the previous raw record (same fingerprint)
     assert_eq!(emitted.len(), 3, "Third record should be aggregated");
-    assert_eq!(emitted[2].repetition_count, 2, "Should show count of 2 for aggregated raw records");
+    assert_eq!(
+        emitted[2].repetition_count, 2,
+        "Should show count of 2 for aggregated raw records"
+    );
 }

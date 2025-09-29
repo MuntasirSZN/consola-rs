@@ -195,7 +195,7 @@ impl LogRecord {
         if self.tag.is_none() && defaults.tag.is_some() {
             self.tag = defaults.tag.clone();
         }
-        
+
         // Additional: merge with defaults (record's additional takes precedence)
         if let Some(default_additional) = &defaults.additional {
             match &mut self.additional {
@@ -210,13 +210,13 @@ impl LogRecord {
                 }
             }
         }
-        
+
         // Meta: merge with defaults (record's meta takes precedence)
         if let Some(default_meta) = &defaults.meta {
             match &mut self.meta {
                 Some(existing) => {
                     // Build a map to deduplicate by key, record values win
-                    let mut meta_map: std::collections::HashMap<String, ArgValue> = 
+                    let mut meta_map: std::collections::HashMap<String, ArgValue> =
                         default_meta.iter().cloned().collect();
                     for (k, v) in existing.iter() {
                         meta_map.insert(k.clone(), v.clone());
@@ -228,7 +228,7 @@ impl LogRecord {
                 }
             }
         }
-        
+
         self
     }
 

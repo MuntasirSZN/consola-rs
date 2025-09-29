@@ -94,7 +94,7 @@ This file is the authoritative actionable task list.
 - [x] Coalesce below vs at threshold.
 - [x] Window expiry flush.
 - [x] Manual flush releases suppressed.
-- [ ] Mixed raw/formatted same fingerprint case.
+- [x] Mixed raw/formatted same fingerprint case.
 
 ---
 

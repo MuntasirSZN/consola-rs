@@ -287,7 +287,12 @@ pub fn build_basic_segments(record: &LogRecord, opts: &FormatOptions) -> Vec<Seg
 }
 
 /// Attempt to detect terminal column width.
+/// Tries in order:
+/// 1. COLUMNS environment variable
+/// 2. Terminal size detection (Unix only)
+/// 3. Falls back to None (let caller decide default)
 pub fn detect_terminal_width() -> Option<usize> {
+    // Try COLUMNS env var first
     if let Ok(cols) = env::var("COLUMNS") {
         if let Ok(n) = cols.parse::<usize>() {
             if n > 0 {
@@ -295,6 +300,43 @@ pub fn detect_terminal_width() -> Option<usize> {
             }
         }
     }
+
+    // Try terminal size detection on Unix
+    #[cfg(unix)]
+    {
+        if let Some(size) = get_terminal_size_unix() {
+            return Some(size);
+        }
+    }
+
+    // Windows terminal detection could be added here with winapi
+    #[cfg(windows)]
+    {
+        // TODO: Windows console API for terminal width
+    }
+
+    None
+}
+
+#[cfg(unix)]
+fn get_terminal_size_unix() -> Option<usize> {
+    use std::io::{self, IsTerminal};
+
+    // Check if stdout is a terminal
+    if !io::stdout().is_terminal() {
+        return None;
+    }
+
+    // Use ioctl to get terminal size
+    // SAFETY: This is safe because we're just querying terminal size
+    // and not modifying anything
+    unsafe {
+        let mut ws: libc::winsize = std::mem::zeroed();
+        if libc::ioctl(libc::STDOUT_FILENO, libc::TIOCGWINSZ, &mut ws) == 0 && ws.ws_col > 0 {
+            return Some(ws.ws_col as usize);
+        }
+    }
+
     None
 }
 

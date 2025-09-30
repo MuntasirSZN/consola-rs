@@ -92,6 +92,11 @@ impl Reporter for BasicReporter {
 
 impl Reporter for FancyReporter {
     fn emit(&self, record: &LogRecord, w: &mut dyn Write) -> io::Result<()> {
+        // Special handling for box type logs with colored frames
+        if record.type_name == "box" {
+            return self.emit_box(record, w);
+        }
+
         let mut segs = build_basic_segments(record, &self.opts);
         // Prepend icon badge based on type with ASCII fallback
         let (unicode_icon, ascii_icon) = match record.type_name.as_str() {
@@ -208,6 +213,54 @@ impl Reporter for FancyReporter {
             }
             w.write_all(current.as_bytes())
         }
+    }
+}
+
+impl FancyReporter {
+    /// Special emit for box-type logs with colored frames
+    fn emit_box(&self, record: &LogRecord, w: &mut dyn Write) -> io::Result<()> {
+        use crate::utils::BoxBuilder;
+
+        // Extract title from message if present
+        let title = record.message.as_deref().unwrap_or("");
+
+        // Collect content lines from args
+        let mut content_lines = Vec::new();
+        for arg in &record.args {
+            content_lines.push(arg.to_string());
+        }
+
+        // Build the box
+        let width = self
+            .opts
+            .columns
+            .or_else(detect_terminal_width)
+            .unwrap_or(80);
+        let box_builder = BoxBuilder::new(self.opts.unicode).with_width(width.saturating_sub(4));
+        let box_lines = box_builder.build(title, &content_lines);
+
+        // Apply colors if enabled
+        for line in box_lines {
+            if self.opts.colors {
+                // Apply cyan color to box borders
+                let styled = apply_style(
+                    &line,
+                    Some(&crate::format::SegmentStyle {
+                        fg_color: Some("cyan".to_string()),
+                        bg_color: None,
+                        bold: false,
+                        dim: false,
+                        italic: false,
+                        underline: false,
+                    }),
+                );
+                writeln!(w, "{}", styled)?;
+            } else {
+                writeln!(w, "{}", line)?;
+            }
+        }
+
+        Ok(())
     }
 }
 

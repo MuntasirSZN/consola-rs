@@ -1,0 +1,10 @@
+---
+source: tests/snapshot_tests.rs
+expression: plain
+---
+┌──────────────────────────────── Box Title ─────────────────────────────────┐
+│ Box Title                                                                 │
+│ Line 1 content                                                            │
+│ Line 2 content                                                            │
+│ Line 3 content                                                            │
+└──────────────────────────────────────────────────────────────────────────┘

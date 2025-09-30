@@ -202,3 +202,35 @@ fn snapshot_basic_with_date() {
         "Output should contain message"
     );
 }
+
+// Test FancyReporter with Box (Task 53)
+#[test]
+fn snapshot_fancy_with_box() {
+    let reporter = FancyReporter {
+        opts: FormatOptions {
+            date: false,
+            colors: true,
+            ..FormatOptions::default()
+        },
+    };
+
+    // Create a box record
+    let mut record = LogRecord::new("box", None, vec!["Box Title".into()]);
+    record.args.push("Line 1 content".into());
+    record.args.push("Line 2 content".into());
+    record.args.push("Line 3 content".into());
+
+    let mut buf: Vec<u8> = Vec::new();
+    reporter.emit(&record, &mut buf).unwrap();
+    let colored = String::from_utf8(buf).unwrap();
+    let plain_bytes = strip(colored.as_bytes());
+    let plain = String::from_utf8(plain_bytes).unwrap();
+
+    // Verify box structure is present
+    assert!(plain.contains("Box Title"), "Should contain box title");
+    assert!(plain.contains("Line 1"), "Should contain first line");
+    assert!(plain.contains("Line 2"), "Should contain second line");
+
+    insta::assert_snapshot!("fancy_box_colored", colored);
+    insta::assert_snapshot!("fancy_box_plain", plain);
+}

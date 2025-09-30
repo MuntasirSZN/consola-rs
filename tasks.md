@@ -168,7 +168,7 @@ This file is the authoritative actionable task list.
 50. [x] Badge formatting (bg color + uppercase type).
 51. [x] Type/level color mapping (info=cyan, success=green, fail/fatal/error=red, warn=yellow basic implemented).
 52. [x] Stack line coloring (gray "at", cyan path).
-53. [ ] Integration with Box (colored frame).
+53. [x] Integration with Box (colored frame).
 54. [x] Repetition suffix dim style.
 55. [x] Downgrade gracefully if colors disabled (basic fallback prints plain text).
         🧪 Tests:

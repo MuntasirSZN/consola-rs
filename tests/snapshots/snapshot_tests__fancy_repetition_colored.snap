@@ -1,0 +1,5 @@
+---
+source: tests/snapshot_tests.rs
+expression: colored
+---
+[33;1m⚠[0m [1m WARN [0m Repeated warning [90;2m (x5)[0m

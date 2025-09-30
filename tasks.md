@@ -107,8 +107,8 @@ This file is the authoritative actionable task list.
 30. [x] flush() public API (emits suppressed group if any).
         🧪 Tests:
 
-- [ ] Order preservation.
-- [ ] Throttle boundary reset on resume.
+- [x] Order preservation.
+- [x] Throttle boundary reset on resume.
 - [ ] Capacity overflow strategy (if implemented).
 
 ---
@@ -156,9 +156,9 @@ This file is the authoritative actionable task list.
 48. [ ] Include date when enabled.
         🧪 Tests:
 
-- [ ] Single line formatting snapshot.
-- [ ] Box log multi-line.
-- [ ] Error with cause chain (basic variant).
+- [x] Single line formatting snapshot.
+- [x] Box log multi-line.
+- [x] Error with cause chain (basic variant).
 
 ---
 
@@ -173,9 +173,9 @@ This file is the authoritative actionable task list.
 55. [x] Downgrade gracefully if colors disabled (basic fallback prints plain text).
         🧪 Tests:
 
-- [ ] Fancy colored snapshot (strip_ansi for compare).
-- [ ] Unicode fallback snapshot.
-- [ ] repetition count formatting.
+- [x] Fancy colored snapshot (strip_ansi for compare).
+- [x] Unicode fallback snapshot.
+- [x] repetition count formatting.
 
 ---
 
@@ -203,9 +203,9 @@ This file is the authoritative actionable task list.
 65. [x] Provide structured error data to JSON reporter.
         🧪 Tests:
 
-- [ ] Depth limiting.
-- [ ] Cycle detection.
-- [ ] Multi-level nested output.
+- [x] Depth limiting.
+- [x] Cycle detection.
+- [x] Multi-level nested output.
 
 ---
 
@@ -277,8 +277,8 @@ This file is the authoritative actionable task list.
 91. [ ] Document unstable feature toggles (async-reporters etc).
         🧪 Tests:
 
-- [ ] Env overrides.
-- [ ] NO_COLOR disables styling.
+- [x] Env overrides.
+- [x] NO_COLOR disables styling.
 - [ ] force_simple_width effect.
 
 ---

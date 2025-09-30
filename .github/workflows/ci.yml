@@ -2,37 +2,92 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main, master]
   pull_request:
-    branches: [ main ]
+    branches: [main, master]
+  schedule:
+    #  Sundays at 00:00 UTC
+    - cron: '0 0 * * 0'
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
 
 jobs:
-  build-test:
+  fmt:
+    name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy,rustfmt
-      - name: Cache cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: fmt
+          components: rustfmt
+      - name: Check formatting
         run: cargo fmt --all -- --check
-      - name: clippy
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+      - name: Run clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
-      - name: tests
-        run: cargo test --all-features -- --nocapture
-      - name: build
+
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+      - name: Build
         run: cargo build --all --locked
-      - name: install nextest
-        run: cargo install cargo-nextest
-      - name: run tests
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
+      - name: Run tests
         run: |
           cargo nextest run --all-features --all-targets --locked
           cargo test --doc --locked
+
+  audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - uses: EmbarkStudios/cargo-deny-action@v2
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    container:
+      image: xd009642/tarpaulin:develop-nightly
+      options: --security-opt seccomp=unconfined
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Generate coverage
+        run: |
+          cargo +nightly tarpaulin --all-features --workspace --timeout 120 --out xml --tests --engine llvm
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          verbose: true
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}

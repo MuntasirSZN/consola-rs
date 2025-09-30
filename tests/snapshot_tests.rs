@@ -175,3 +175,30 @@ fn snapshot_fancy_repetition_count() {
     insta::assert_snapshot!("fancy_repetition_colored", colored);
     insta::assert_snapshot!("fancy_repetition_plain", plain);
 }
+
+// Test BasicReporter with date enabled (Task 48)
+#[test]
+fn snapshot_basic_with_date() {
+    let reporter = BasicReporter {
+        opts: FormatOptions {
+            date: true, // Enable date
+            colors: true,
+            ..FormatOptions::default()
+        },
+    };
+    let record = LogRecord::new("info", None, vec!["Message with timestamp".into()]);
+    let mut buf: Vec<u8> = Vec::new();
+    reporter.emit(&record, &mut buf).unwrap();
+    let output = String::from_utf8(buf).unwrap();
+
+    // Verify date is present (timestamp format includes 'T' between date and time)
+    assert!(
+        output.contains('T'),
+        "Output should contain timestamp with ISO8601 format"
+    );
+    assert!(output.contains("[info]"), "Output should contain log type");
+    assert!(
+        output.contains("Message with timestamp"),
+        "Output should contain message"
+    );
+}

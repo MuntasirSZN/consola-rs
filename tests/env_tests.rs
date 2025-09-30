@@ -149,3 +149,46 @@ fn consola_compact_env() {
         }
     }
 }
+
+#[test]
+fn terminal_width_detection() {
+    // Test COLUMNS env var
+    let original = env::var("COLUMNS").ok();
+
+    unsafe {
+        env::set_var("COLUMNS", "120");
+    }
+
+    let width = consola::detect_terminal_width();
+    assert_eq!(width, Some(120), "Should detect width from COLUMNS env var");
+
+    // Restore original
+    unsafe {
+        match original {
+            Some(val) => env::set_var("COLUMNS", val),
+            None => env::remove_var("COLUMNS"),
+        }
+    }
+}
+
+#[test]
+fn terminal_width_fallback() {
+    // With no COLUMNS and possibly no terminal, should return None or actual terminal width
+    let original = env::var("COLUMNS").ok();
+
+    unsafe {
+        env::remove_var("COLUMNS");
+    }
+
+    let width = consola::detect_terminal_width();
+    // Width can be None (not a terminal) or Some(actual_width)
+    // We just check that the function doesn't panic
+    let _ = width;
+
+    // Restore original
+    if let Some(val) = original {
+        unsafe {
+            env::set_var("COLUMNS", val);
+        }
+    }
+}

@@ -119,14 +119,14 @@ This file is the authoritative actionable task list.
 32. [x] FormatOptions { date, colors, compact, columns, error_level, unicode_mode }.
 33. [~] Builder: record → segments (implemented: time, type, tag, message, repetition, additional, meta, stack basic; pending: fancy icon/badge styling, error chain depth formatting).
 34. [~] Raw path bypass (basic log_raw implemented; fast assembly & optimized path pending performance tuning).
-35. [ ] Column width detection (from terminal; fallback).
-36. [ ] Width calc with unicode-width; fallback char len if disabled.
-37. [ ] NO_COLOR and FORCE_COLOR env respect (anstream detection).
+35. [x] Column width detection (from terminal; fallback).
+36. [x] Width calc with unicode-width; fallback char len if disabled.
+37. [x] NO_COLOR and FORCE_COLOR env respect (anstream detection).
         🧪 Tests:
 
 - [ ] Basic vs raw snapshot.
 - [ ] Width fallback when unicode feature off.
-- [ ] NO_COLOR strips style.
+- [x] NO_COLOR strips style.
 
 ---
 
@@ -153,7 +153,7 @@ This file is the authoritative actionable task list.
 45. [x] Implement formatting: `[type][tag] message` (box special pending).
 46. [x] Error formatting (multi-cause with depth limiting, overflow indicator).
 47. [x] stderr for levels < 2 else stdout.
-48. [ ] Include date when enabled.
+48. [x] Include date when enabled.
         🧪 Tests:
 
 - [x] Single line formatting snapshot.

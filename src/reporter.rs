@@ -39,7 +39,7 @@ impl Reporter for BasicReporter {
             plain_parts.push(seg.text.clone());
         }
         let width = cols.unwrap_or(usize::MAX);
-        if width == usize::MAX || compute_line_width(&segments) <= width {
+        if width == usize::MAX || compute_line_width(&segments, &self.opts) <= width {
             // Single line output
             let mut out = String::new();
             for (i, seg) in segments.iter().enumerate() {
@@ -167,7 +167,7 @@ impl Reporter for FancyReporter {
         // Width wrapping similar to BasicReporter
         let cols = self.opts.columns.or_else(detect_terminal_width);
         let width = cols.unwrap_or(usize::MAX);
-        if width == usize::MAX || compute_line_width(&segs) <= width {
+        if width == usize::MAX || compute_line_width(&segs, &self.opts) <= width {
             let mut out = String::new();
             for (i, seg) in segs.iter().enumerate() {
                 if i > 0 {

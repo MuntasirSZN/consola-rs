@@ -202,3 +202,41 @@ fn throttle_boundary_reset_on_resume() {
 
     // Test completes if no panic occurs
 }
+
+#[test]
+fn force_simple_width_effect() {
+    use consola::{compute_line_width, FormatOptions, Segment};
+
+    // Test with unicode characters that have different display width
+    let segments = vec![Segment {
+        text: "你好世界".to_string(), // Chinese characters
+        style: None,
+    }];
+
+    // With force_simple_width = false (default), uses unicode width
+    let opts = FormatOptions {
+        force_simple_width: false,
+        ..Default::default()
+    };
+    let unicode_width = compute_line_width(&segments, &opts);
+
+    // With force_simple_width = true, uses character count
+    let opts = FormatOptions {
+        force_simple_width: true,
+        ..Default::default()
+    };
+    let simple_width = compute_line_width(&segments, &opts);
+
+    // Character count (4) should be less than unicode display width (8)
+    // But if fancy feature is disabled, both will be the same
+    #[cfg(feature = "fancy")]
+    {
+        assert_eq!(simple_width, 4); // char count
+        assert_eq!(unicode_width, 8); // unicode display width
+    }
+    #[cfg(not(feature = "fancy"))]
+    {
+        assert_eq!(simple_width, 4);
+        assert_eq!(unicode_width, 4);
+    }
+}

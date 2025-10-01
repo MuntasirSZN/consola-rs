@@ -7,6 +7,7 @@ use crate::record::{ArgValue, LogRecord, RecordDefaults};
 use crate::throttling::{ThrottleConfig, Throttler};
 use std::collections::VecDeque;
 use std::io::{self, Write};
+use std::sync::Arc;
 
 pub trait Reporter: Send + Sync {
     fn emit(&self, record: &LogRecord, w: &mut dyn Write) -> io::Result<()>;
@@ -39,7 +40,7 @@ impl Reporter for BasicReporter {
             plain_parts.push(seg.text.clone());
         }
         let width = cols.unwrap_or(usize::MAX);
-        if width == usize::MAX || compute_line_width(&segments) <= width {
+        if width == usize::MAX || compute_line_width(&segments, &self.opts) <= width {
             // Single line output
             let mut out = String::new();
             for (i, seg) in segments.iter().enumerate() {
@@ -167,7 +168,7 @@ impl Reporter for FancyReporter {
         // Width wrapping similar to BasicReporter
         let cols = self.opts.columns.or_else(detect_terminal_width);
         let width = cols.unwrap_or(usize::MAX);
-        if width == usize::MAX || compute_line_width(&segs) <= width {
+        if width == usize::MAX || compute_line_width(&segs, &self.opts) <= width {
             let mut out = String::new();
             for (i, seg) in segs.iter().enumerate() {
                 if i > 0 {
@@ -352,6 +353,8 @@ impl Default for LoggerConfig {
     }
 }
 
+type MockFn = Box<dyn Fn(&LogRecord) + Send + Sync>;
+
 pub struct Logger<R: Reporter + 'static> {
     cfg: LoggerConfig,
     reporter: R,
@@ -359,6 +362,7 @@ pub struct Logger<R: Reporter + 'static> {
     paused: bool,
     queue: VecDeque<Pending>,
     system_clock: SystemClock,
+    mock_fn: Option<MockFn>,
 }
 
 impl<R: Reporter + 'static> Logger<R> {
@@ -370,6 +374,7 @@ impl<R: Reporter + 'static> Logger<R> {
             paused: false,
             queue: VecDeque::new(),
             system_clock: SystemClock,
+            mock_fn: None,
         }
     }
 
@@ -393,6 +398,10 @@ impl<R: Reporter + 'static> Logger<R> {
 
     pub fn level(&self) -> LogLevel {
         self.cfg.level
+    }
+
+    pub fn reporter(&self) -> &R {
+        &self.reporter
     }
 
     pub fn log<I, A>(&mut self, type_name: &str, tag: Option<String>, args: I)
@@ -499,6 +508,21 @@ impl<R: Reporter + 'static> Logger<R> {
         self.log("trace", None, [message.to_string()]);
     }
 
+    /// Set a mock callback function that will be called before the reporter emits each record.
+    /// This is useful for testing and debugging. The mock function receives a reference to the
+    /// LogRecord before it is emitted to the reporter.
+    pub fn set_mock<F>(&mut self, mock_fn: F)
+    where
+        F: Fn(&LogRecord) + Send + Sync + 'static,
+    {
+        self.mock_fn = Some(Box::new(mock_fn));
+    }
+
+    /// Clear the mock callback function.
+    pub fn clear_mock(&mut self) {
+        self.mock_fn = None;
+    }
+
     fn passes_level(&self, record: &LogRecord) -> bool {
         record.level <= self.cfg.level
     }
@@ -522,6 +546,11 @@ impl<R: Reporter + 'static> Logger<R> {
     }
 
     fn emit(&self, record: &LogRecord) {
+        // Call mock function if set (before reporter emission)
+        if let Some(ref mock) = self.mock_fn {
+            mock(record);
+        }
+
         let is_err = record.level <= LogLevel::ERROR;
         let mut handle: Box<dyn Write> = if is_err {
             Box::new(io::stderr())
@@ -757,6 +786,67 @@ impl ReporterWithOptions for JsonReporter {
 
 #[cfg(feature = "json")]
 pub type JsonLogger = Logger<JsonReporter>;
+
+/// MemoryReporter captures full LogRecords in memory for testing and inspection.
+/// This is useful for writing tests that need to verify log output without checking stdout/stderr.
+#[derive(Default)]
+pub struct MemoryReporter {
+    records: std::sync::Arc<std::sync::Mutex<Vec<LogRecord>>>,
+    opts: FormatOptions,
+}
+
+impl MemoryReporter {
+    pub fn new() -> Self {
+        Self {
+            records: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
+            opts: FormatOptions::default(),
+        }
+    }
+
+    /// Get a clone of all captured records.
+    pub fn get_records(&self) -> Vec<LogRecord> {
+        self.records.lock().unwrap().clone()
+    }
+
+    /// Clear all captured records.
+    pub fn clear(&self) {
+        self.records.lock().unwrap().clear();
+    }
+
+    /// Get the number of captured records.
+    pub fn len(&self) -> usize {
+        self.records.lock().unwrap().len()
+    }
+
+    /// Check if any records have been captured.
+    pub fn is_empty(&self) -> bool {
+        self.records.lock().unwrap().is_empty()
+    }
+
+    /// Get a shared reference to the records Arc for sharing between threads.
+    pub fn records_arc(&self) -> std::sync::Arc<std::sync::Mutex<Vec<LogRecord>>> {
+        Arc::clone(&self.records)
+    }
+}
+
+impl Reporter for MemoryReporter {
+    fn emit(&self, record: &LogRecord, _w: &mut dyn Write) -> io::Result<()> {
+        self.records.lock().unwrap().push(record.clone());
+        Ok(())
+    }
+}
+
+impl ReporterWithOptions for MemoryReporter {
+    fn fmt_options(&self) -> &FormatOptions {
+        &self.opts
+    }
+
+    fn fmt_options_mut(&mut self) -> &mut FormatOptions {
+        &mut self.opts
+    }
+}
+
+pub type MemoryLogger = Logger<MemoryReporter>;
 
 /// Builder for configuring Logger instances with environment variable support
 pub struct LoggerBuilder<R: Reporter + 'static> {

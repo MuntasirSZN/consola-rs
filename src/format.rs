@@ -15,6 +15,7 @@ pub struct FormatOptions {
     pub show_stack: bool,
     pub show_additional: bool,
     pub show_meta: bool,
+    pub force_simple_width: bool,
 }
 
 impl Default for FormatOptions {
@@ -32,6 +33,7 @@ impl Default for FormatOptions {
             show_stack: false,
             show_additional: true,
             show_meta: true,
+            force_simple_width: false,
         }
     }
 }
@@ -359,11 +361,17 @@ fn normalize_multiline_message(message: &str, indent: &str) -> String {
 }
 
 /// Compute printable width of concatenated segments (simplistic; excludes ANSI codes)
-pub fn compute_line_width(segments: &[Segment]) -> usize {
-    segments.iter().map(|s| display_width(&s.text)).sum()
+pub fn compute_line_width(segments: &[Segment], opts: &FormatOptions) -> usize {
+    segments
+        .iter()
+        .map(|s| display_width(&s.text, opts.force_simple_width))
+        .sum()
 }
 
-fn display_width(s: &str) -> usize {
+fn display_width(s: &str, force_simple: bool) -> usize {
+    if force_simple {
+        return s.chars().count();
+    }
     #[cfg(feature = "fancy")]
     {
         use unicode_width::UnicodeWidthStr;

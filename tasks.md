@@ -257,14 +257,14 @@ This file is the authoritative actionable task list.
 
 ## 14. Mocking & Test Instrumentation
 
-83. [ ] set_mock(fn: Fn(&LogRecord)) before reporters.
-84. [ ] clear_mock().
-85. [ ] MemoryReporter capturing full records.
-86. [ ] MockClock injection for deterministic timestamps.
+83. [x] set_mock(fn: Fn(&LogRecord)) before reporters.
+84. [x] clear_mock().
+85. [x] MemoryReporter capturing full records.
+86. [x] MockClock injection for deterministic timestamps.
         🧪 Tests:
 
-- [ ] Mock intercept order.
-- [ ] Deterministic timestamp snapshots.
+- [x] Mock intercept order.
+- [x] Deterministic timestamp snapshots.
 
 ---
 
@@ -273,13 +273,13 @@ This file is the authoritative actionable task list.
 87. [x] LoggerBuilder with defaults.
 88. [~] from_env() reading: CONSOLA_LEVEL, NO_COLOR, CONSOLA_COMPACT. (CONSOLA_LEVEL implemented; NO_COLOR and CONSOLA_COMPACT in FormatOptions.adaptive())
 89. [x] Precedence: builder > env > defaults.
-90. [ ] Option force_simple_width bool.
+90. [x] Option force_simple_width bool.
 91. [ ] Document unstable feature toggles (async-reporters etc).
         🧪 Tests:
 
 - [x] Env overrides.
 - [x] NO_COLOR disables styling.
-- [ ] force_simple_width effect.
+- [x] force_simple_width effect.
 
 ---
 

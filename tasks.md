@@ -317,16 +317,16 @@ This file is the authoritative actionable task list.
 
 ## 18. Performance & Benchmarks
 
-105. [ ] Bench scenarios: simple info, fancy info, json, high repetition, unique bursts.
-106. [ ] Compare raw vs formatted overhead.
-107. [ ] Evaluate blake3 cost; fallback to fxhash (⚠ decision after bench).
-108. [ ] smallvec size tuning (segments typical count).
-109. [ ] Preallocate String capacities (common line length).
-110. [ ] Document results in BENCHMARKS.md.
+105. [x] Bench scenarios: simple info, fancy info, json, high repetition, unique bursts.
+106. [x] Compare raw vs formatted overhead.
+107. [x] Evaluate blake3 cost; fallback to fxhash (⚠ decision after bench).
+108. [x] smallvec size tuning (segments typical count).
+109. [x] Preallocate String capacities (common line length).
+110. [x] Document results in BENCHMARKS.md.
          🧪 Bench:
 
-- [ ] Baseline println! vs basic info.
-- [ ] Throttled spam scenario memory.
+- [x] Baseline println! vs basic info.
+- [x] Throttled spam scenario memory.
 
 ---
 

@@ -211,18 +211,18 @@ This file is the authoritative actionable task list.
 
 ## 11. Prompt System (feature "prompt-demand")
 
-66. [ ] Define PromptCancelStrategy (Reject, Default, Undefined, Null, Symbol).
-67. [ ] PromptOutcome enum (Value(T), Undefined, NullValue, SymbolCancel, Cancelled).
-68. [ ] PromptProvider trait using demand crate.
-69. [ ] Demand adapter: text/confirm/select/multiselect mapping.
-70. [ ] Cancellation mapping (demand interruption → strategy).
-71. [ ] WASM runtime guard: calling prompt returns Err + logs console error (no interactive).
+66. [x] Define PromptCancelStrategy (Reject, Default, Undefined, Null, Symbol).
+67. [x] PromptOutcome enum (Value(T), Undefined, NullValue, SymbolCancel, Cancelled).
+68. [x] PromptProvider trait using demand crate.
+69. [x] Demand adapter: text/confirm/select/multiselect mapping.
+70. [x] Cancellation mapping (demand interruption → strategy).
+71. [x] WASM runtime guard: calling prompt returns Err + logs console error (no interactive).
 72. [ ] Provide builder `.with_prompt_provider(DefaultDemandPrompt)` only when feature active.
         🧪 Tests:
 
-- [ ] Cancellation strategy behavior.
-- [ ] Default fallback path.
-- [ ] WASM (compiled) prompt stub returns error (wasm test skip interactive).
+- [x] Cancellation strategy behavior.
+- [x] Default fallback path.
+- [x] WASM (compiled) prompt stub returns error (wasm test skip interactive).
 
 ---
 

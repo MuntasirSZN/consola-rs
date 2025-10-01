@@ -17,6 +17,11 @@ pub use utils::*;
 pub mod clock;
 pub use clock::*;
 
+#[cfg(any(feature = "prompt-demand", feature = "wasm"))]
+pub mod prompt;
+#[cfg(any(feature = "prompt-demand", feature = "wasm"))]
+pub use prompt::*;
+
 #[cfg(test)]
 mod tests {
     use super::*;

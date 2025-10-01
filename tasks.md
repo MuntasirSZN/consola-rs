@@ -346,17 +346,17 @@ This file is the authoritative actionable task list.
 
 ## 20. Documentation
 
-120. [ ] README: features, quick start (native + wasm), examples.
-121. [ ] MIGRATION.md (JS consola differences: infinite levels replaced, prompt differences, dynamic methods).
-122. [ ] ARCHITECTURE.md (pipeline diagram).
+120. [x] README: features, quick start (native + wasm), examples.
+121. [x] MIGRATION.md (JS consola differences: infinite levels replaced, prompt differences, dynamic methods).
+122. [x] ARCHITECTURE.md (pipeline diagram).
 123. [ ] REPORTERS.md (custom reporter guide).
 124. [ ] PROMPTS.md (using demand; no WASM; cancellation mapping table).
 125. [ ] INTEGRATION.md (log + tracing usage).
-126. [ ] FEATURE-FLAGS.md (matrix).
+126. [x] FEATURE-FLAGS.md (matrix).
 127. [ ] BENCHMARKS.md results.
-128. [ ] CHANGELOG.md (manual initial).
+128. [x] CHANGELOG.md (manual initial).
 129. [ ] CONTRIBUTING.md (workflow, MSRV).
-130. [ ] SECURITY.md (if needed).
+130. [x] SECURITY.md (if needed).
 131. [ ] API docs check (cargo doc build, feature combos).
 
 ---

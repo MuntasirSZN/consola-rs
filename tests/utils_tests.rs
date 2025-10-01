@@ -205,7 +205,7 @@ fn throttle_boundary_reset_on_resume() {
 
 #[test]
 fn force_simple_width_effect() {
-    use consola::{compute_line_width, FormatOptions, Segment};
+    use consola::{FormatOptions, Segment, compute_line_width};
 
     // Test with unicode characters that have different display width
     let segments = vec![Segment {
@@ -239,4 +239,120 @@ fn force_simple_width_effect() {
         assert_eq!(simple_width, 4);
         assert_eq!(unicode_width, 4);
     }
+}
+
+#[test]
+fn mock_intercept_order() {
+    use std::sync::{Arc, Mutex};
+
+    let mut logger = Logger::new(BasicReporter::default());
+    let captured = Arc::new(Mutex::new(Vec::new()));
+    let captured_clone = Arc::clone(&captured);
+
+    // Set mock to capture log records
+    logger.set_mock(move |record: &LogRecord| {
+        captured_clone
+            .lock()
+            .unwrap()
+            .push(record.type_name.clone());
+    });
+
+    // Log some messages
+    logger.info("first");
+    logger.warn("second");
+    logger.error("third");
+
+    // Verify records were captured in order
+    let records = captured.lock().unwrap();
+    assert_eq!(records.len(), 3);
+    assert_eq!(records[0], "info");
+    assert_eq!(records[1], "warn");
+    assert_eq!(records[2], "error");
+
+    // Clear mock
+    logger.clear_mock();
+
+    // Log another message - should not be captured
+    logger.debug("fourth");
+
+    // Verify no new records were captured
+    assert_eq!(records.len(), 3);
+}
+
+#[test]
+fn memory_reporter_captures_records() {
+    use consola::{Logger, MemoryReporter};
+
+    let reporter = MemoryReporter::new();
+    let mut logger = Logger::new(reporter);
+
+    // Initially empty
+    assert!(logger.reporter().is_empty());
+    assert_eq!(logger.reporter().len(), 0);
+
+    // Log some messages
+    logger.info("test message");
+    logger.warn("warning message");
+    logger.error("error message");
+
+    // Verify records were captured
+    assert_eq!(logger.reporter().len(), 3);
+    assert!(!logger.reporter().is_empty());
+
+    let records = logger.reporter().get_records();
+    assert_eq!(records.len(), 3);
+    assert_eq!(records[0].type_name, "info");
+    assert_eq!(records[0].message.as_deref(), Some("test message"));
+    assert_eq!(records[1].type_name, "warn");
+    assert_eq!(records[1].message.as_deref(), Some("warning message"));
+    assert_eq!(records[2].type_name, "error");
+    assert_eq!(records[2].message.as_deref(), Some("error message"));
+
+    // Clear records
+    logger.reporter().clear();
+    assert!(logger.reporter().is_empty());
+    assert_eq!(logger.reporter().len(), 0);
+}
+
+#[test]
+fn deterministic_timestamp_snapshots() {
+    use consola::{Logger, LoggerConfig, MemoryReporter, MockClock, ThrottleConfig};
+
+    let mock_clock = MockClock::new();
+    let reporter = MemoryReporter::new();
+
+    let config = LoggerConfig {
+        level: LogLevel::VERBOSE,
+        throttle: ThrottleConfig::default(),
+        queue_capacity: None,
+        clock: Some(Box::new(mock_clock)),
+    };
+
+    let mut logger = Logger::new(reporter).with_config(config);
+
+    // Log first message at time T
+    logger.info("message at T0");
+
+    // Need to get a mutable reference to the clock to advance it
+    // Since the clock is inside the config, we'll need to create a new config
+    // For this test, let's verify that the timestamps are stable
+
+    let records = logger.reporter().get_records();
+    assert_eq!(records.len(), 1);
+
+    let first_timestamp = records[0].timestamp;
+
+    // Log more messages - they should have the same timestamp since clock doesn't advance
+    logger.warn("message at T0");
+    logger.error("message at T0");
+
+    let records = logger.reporter().get_records();
+    assert_eq!(records.len(), 3);
+
+    // All three records should have the exact same timestamp
+    assert_eq!(records[0].timestamp, first_timestamp);
+    assert_eq!(records[1].timestamp, first_timestamp);
+    assert_eq!(records[2].timestamp, first_timestamp);
+
+    // This demonstrates deterministic timestamps for testing
 }

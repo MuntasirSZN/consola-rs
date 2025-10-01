@@ -303,14 +303,14 @@ This file is the authoritative actionable task list.
 
 ## 17. Macros & Ergonomics
 
-100. [ ] info!(logger, "hello {user}", user=?user_id).
-101. [ ] warn!, error!, success!, etc.
-102. [ ] Raw macros info_raw! etc.
-103. [ ] log_type!(logger, "custom", ...).
+100. [x] info!(logger, "hello {user}", user=?user_id).
+101. [x] warn!, error!, success!, etc.
+102. [x] Raw macros info_raw! etc.
+103. [x] log_type!(logger, "custom", ...).
 104. [ ] Ensure macros avoid format cost if filtered (level guard).
          🧪 Tests:
 
-- [ ] Compile-time macro checks.
+- [x] Compile-time macro checks.
 - [ ] Filtered-out macro short-circuits.
 
 ---

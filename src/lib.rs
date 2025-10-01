@@ -22,6 +22,10 @@ pub mod prompt;
 #[cfg(any(feature = "prompt-demand", feature = "wasm"))]
 pub use prompt::*;
 
+#[macro_use]
+pub mod macros;
+pub use macros::*;
+
 #[cfg(test)]
 mod tests {
     use super::*;

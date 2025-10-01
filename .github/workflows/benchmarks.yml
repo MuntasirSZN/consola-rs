@@ -1,0 +1,57 @@
+name: Benchmarks
+
+on:
+  workflow_dispatch: # Manual trigger only
+    inputs:
+      baseline:
+        description: 'Baseline to compare against (leave empty for none)'
+        required: false
+        default: ''
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
+
+jobs:
+  benchmark:
+    name: Run Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build benchmarks
+        run: cargo build --release --benches
+
+      - name: Run benchmarks
+        run: |
+          if [ -n "${{ github.event.inputs.baseline }}" ]; then
+            cargo bench --bench "*" -- --save-baseline ${{ github.event.inputs.baseline }}
+          else
+            cargo bench --bench "*"
+          fi
+
+      - name: Archive benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: target/criterion/
+          retention-days: 30
+
+      - name: Comment PR (if applicable)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '## 📊 Benchmark Results\n\nBenchmark artifacts have been uploaded. Check the Actions artifacts for detailed results.'
+            })

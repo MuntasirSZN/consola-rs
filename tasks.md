@@ -363,17 +363,17 @@ This file is the authoritative actionable task list.
 
 ## 21. CI & Tooling
 
-132. [ ] GitHub Actions matrix: linux, macOS, windows.
-133. [ ] MSRV job (deny warnings).
-134. [ ] clippy & fmt enforcement.
-135. [ ] cargo-deny (licenses/advisories).
-136. [ ] nextest integration.
-137. [ ] wasm build job (feature "wasm", no prompt-demand).
-138. [ ] json feature build job.
-139. [ ] docs build job (cargo doc).
-140. [ ] Optional coverage upload (Codecov).
-141. [ ] Bench job (manual trigger) (🐢).
-142. [ ] Lint for unwrap patterns (custom script).
+132. [x] GitHub Actions matrix: linux, macOS, windows.
+133. [x] MSRV job (deny warnings).
+134. [x] clippy & fmt enforcement.
+135. [x] cargo-deny (licenses/advisories).
+136. [x] nextest integration.
+137. [x] wasm build job (feature "wasm", no prompt-demand).
+138. [x] json feature build job.
+139. [x] docs build job (cargo doc).
+140. [x] Optional coverage upload (Codecov).
+141. [x] Bench job (manual trigger) (🐢).
+142. [x] Lint for unwrap patterns (custom script).
 
 ---
 

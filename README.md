@@ -224,7 +224,7 @@ cargo clippy --all-targets --all-features -- -D warnings
 cargo build --all-features
 
 # Run all checks
-make check
+just check
 ```
 
 ## 📊 Performance

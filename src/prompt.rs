@@ -110,15 +110,23 @@ pub trait PromptProvider: Send + Sync {
 fn is_browser() -> bool {
     #[cfg(feature = "wasm")]
     {
-        // Use wasm_bindgen to check for browser-specific globals
-        use wasm_bindgen::JsValue;
+        use wasm_bindgen::prelude::*;
+        use wasm_bindgen::JsCast;
+        use js_sys::Reflect;
 
-        // Try to get the global 'window' object
-        let global = js_sys::global();
-        let window = js_sys::Reflect::get(&global, &JsValue::from_str("window"));
+        // Check if `window` is defined and is an object
+        if let Ok(window) = js_sys::global().dyn_into::<web_sys::Window>() {
+            return true; // We’re in a browser
+        }
 
-        // If window exists and is not undefined, we're likely in a browser
-        window.is_ok() && !window.unwrap().is_undefined()
+        // Some browsers expose `self` (WebWorker)
+        if Reflect::has(&js_sys::global(), &"self".into()).unwrap_or(false) {
+            return js_sys::global()
+                .dyn_into::<web_sys::WorkerGlobalScope>()
+                .is_ok();
+        }
+
+        false
     }
     #[cfg(not(feature = "wasm"))]
     {

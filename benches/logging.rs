@@ -1,4 +1,8 @@
 use consola::{debug, error, info, info_raw, success, warn};
+use divan::AllocProfiler;
+
+#[global_allocator]
+static GLOBAL: AllocProfiler = AllocProfiler::system();
 
 fn main() {
     divan::main();

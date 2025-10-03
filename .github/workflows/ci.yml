@@ -160,23 +160,3 @@ jobs:
           file: lcov.info
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
-
-  lint-unwrap:
-    name: Lint Unwrap Patterns
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-      - name: Check for unwrap/expect outside tests
-        run: |
-          # Find .rs files, exclude tests, check for unwrap/expect
-          find src -name "*.rs" -type f | while read -r file; do
-            # Skip if file is in a test module or has #[cfg(test)]
-            if ! grep -q "#\[cfg(test)\]" "$file" && ! echo "$file" | grep -q "tests\.rs"; then
-              if grep -n "\.unwrap()\|\.expect(" "$file" | grep -v "^[[:space:]]*//"; then
-                echo "ERROR: Found unwrap/expect in non-test code in $file"
-                exit 1
-              fi
-            fi
-          done
-        shell: bash

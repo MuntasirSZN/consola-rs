@@ -110,9 +110,9 @@ pub trait PromptProvider: Send + Sync {
 fn is_browser() -> bool {
     #[cfg(feature = "wasm")]
     {
-        use wasm_bindgen::prelude::*;
-        use wasm_bindgen::JsCast;
         use js_sys::Reflect;
+        use wasm_bindgen::JsCast;
+        use wasm_bindgen::prelude::*;
 
         // Check if `window` is defined and is an object
         if let Ok(window) = js_sys::global().dyn_into::<web_sys::Window>() {

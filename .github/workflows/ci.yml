@@ -39,7 +39,6 @@ jobs:
         uses: moonrepo/setup-rust@v1
         with:
           components: clippy
-          bins: clippy
       - name: Run clippy
         run: just lint
 

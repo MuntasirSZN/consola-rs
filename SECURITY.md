@@ -16,8 +16,8 @@ We take security seriously. If you discover a security vulnerability in consola-
 
 **DO NOT** create a public GitHub issue for security vulnerabilities.
 
-Instead, please email the maintainers at:
-- GitHub Security Advisory: Use the "Security" tab in the repository
+Instead, please email the maintainer at:
+- **Email**: muntasir.joypurhat@gmail.com
 
 Or open a private security advisory:
 1. Go to https://github.com/MuntasirSZN/consola-rs/security/advisories

@@ -42,7 +42,7 @@ wasm-bindgen = { version = "0.2.104", optional = true }
 
 [dev-dependencies]
 assert_fs = "1.1.3"
-criterion = { version = "0.7.0", default-features = false, features = ["rayon"] }
+divan = "0.1"
 insta = { version = "1.43.2", features = ["yaml"] }
 proptest = "1.8.0"
 rstest = "0.26.1"
@@ -58,6 +58,10 @@ fancy = ["unicode-width"]
 json = ["dep:serde", "dep:serde_json"]
 prompt-demand = ["dep:demand"]
 wasm = ["dep:wasm-bindgen"]
+
+[[bench]]
+name = "logging"
+harness = false
 
 [profile.bench]
 lto = true

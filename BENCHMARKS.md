@@ -10,7 +10,7 @@ consola-rs is designed for high performance while maintaining rich functionality
 
 ### Prerequisites
 
-Benchmarks use the `criterion` crate, which is included in dev-dependencies.
+Benchmarks use the `divan` crate, which is included in dev-dependencies.
 
 ### Commands
 
@@ -18,23 +18,20 @@ Benchmarks use the `criterion` crate, which is included in dev-dependencies.
 # Run all benchmarks
 cargo bench
 
-# Run specific benchmark group
-cargo bench --bench logging_benchmark
+# Run specific benchmark
+cargo bench --bench logging
 
-# Compare against a baseline
-cargo bench --bench logging_benchmark -- --save-baseline my-baseline
+# Save results for comparison
+cargo bench --bench logging -- --save
 
-# Compare current performance to baseline
-cargo bench --bench logging_benchmark -- --baseline my-baseline
-
-# Generate detailed reports
-cargo bench --bench logging_benchmark -- --verbose
+# Compare with baseline
+cargo bench --bench logging -- --baseline <name>
 ```
 
 ### Results Location
 
 Benchmark results are saved to:
-- `target/criterion/` - Detailed HTML reports
+- `target/divan/` - Performance data
 - Console output - Summary statistics
 
 ## Benchmark Suites
@@ -390,6 +387,7 @@ For performance-related questions or optimization ideas, open an issue on GitHub
 
 ---
 
-**Last Updated**: 2024-10-01  
+**Last Updated**: 2024-10-03  
 **Benchmark Version**: 0.0.0-alpha.0  
-**Criterion Version**: 0.7.0
+**Divan Version**: 0.1
+

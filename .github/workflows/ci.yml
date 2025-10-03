@@ -21,8 +21,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-      - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Setup Rust
+        uses: moonrepo/setup-rust@v1
         with:
           components: rustfmt
       - name: Check formatting
@@ -34,12 +34,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-      - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Setup Rust
+        uses: moonrepo/setup-rust@v1
         with:
           components: clippy
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
       - name: Run clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
@@ -52,36 +50,17 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
+        uses: actions/checkout@v5
+      - name: Setup Rust
+        uses: moonrepo/setup-rust@v1
+        with:
+          bins: cargo-nextest
       - name: Build
         run: cargo build --all --locked
-      - name: Install nextest
-        uses: taiki-e/install-action@nextest
       - name: Run tests
         run: |
           cargo nextest run --all-features --all-targets --locked
           cargo test --doc --locked
-
-  msrv:
-    name: MSRV (1.85)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-      - name: Set up Rust toolchain (MSRV)
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: 1.85.0
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-      - name: Check build with MSRV
-        run: cargo build --all-features --locked
-      - name: Run tests with MSRV
-        run: cargo test --all-features --locked
 
   feature-builds:
     name: Feature Build (${{ matrix.feature }})
@@ -100,10 +79,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-      - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
+      - name: Setup Rust
+        uses: moonrepo/setup-rust@v1
       - name: Build with features
         run: |
           case "${{ matrix.feature }}" in
@@ -136,10 +113,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-      - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
+      - name: Setup Rust
+        uses: moonrepo/setup-rust@v1
       - name: Build documentation (no features)
         run: cargo doc --no-deps --no-default-features --locked
       - name: Build documentation (default features)
@@ -193,4 +168,3 @@ jobs:
             fi
           done
         shell: bash
-

@@ -1,7 +1,8 @@
 //! Prompt system for interactive user input (feature "prompt-demand")
 //!
 //! Provides abstractions for interactive prompts using the `demand` crate.
-//! WASM targets will return an error if prompts are attempted.
+//! Browser environments will return an error if prompts are attempted.
+//! Note: WASM running in Node.js, Wasmer, or other runtimes may support prompts.
 
 use std::error::Error as StdError;
 use thiserror::Error;
@@ -65,8 +66,8 @@ pub enum PromptError {
     /// Prompt was cancelled by user
     #[error("prompt cancelled by user")]
     Cancelled,
-    /// Prompt not supported (e.g., in WASM)
-    #[error("prompts not supported in this environment (WASM)")]
+    /// Prompt not supported (e.g., in browsers)
+    #[error("prompts not supported in this environment (browser)")]
     NotSupported,
     /// Internal error from demand crate
     #[cfg(feature = "prompt-demand")]
@@ -242,7 +243,8 @@ impl PromptProvider for DefaultDemandPrompt {
     }
 }
 
-/// WASM stub for prompt provider (always returns NotSupported error)
+/// Browser stub for prompt provider (always returns NotSupported error)
+/// Note: This is for browser environments. WASM in Node.js or Wasmer may work.
 #[cfg(feature = "wasm")]
 pub struct WasmPromptStub;
 

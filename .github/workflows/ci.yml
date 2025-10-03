@@ -8,6 +8,7 @@ on:
   schedule:
     #  Sundays at 00:00 UTC
     - cron: '0 0 * * 0'
+  workflow_dispatch: # Allow manual triggers
 
 env:
   RUST_BACKTRACE: 1
@@ -20,12 +21,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-      - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Setup Rust
+        uses: moonrepo/setup-rust@v1
         with:
           components: rustfmt
+          bins: just
       - name: Check formatting
-        run: cargo fmt --all -- --check
+        run: just fmt-check
 
   clippy:
     name: Clippy
@@ -33,14 +35,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-      - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Setup Rust
+        uses: moonrepo/setup-rust@v1
         with:
           components: clippy
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
+          bins: just
       - name: Run clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: just lint
 
   test:
     name: Test (${{ matrix.os }})
@@ -51,19 +52,76 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
+        uses: actions/checkout@v5
+      - name: Setup Rust
+        uses: moonrepo/setup-rust@v1
+        with:
+          bins: cargo-nextest,just
       - name: Build
-        run: cargo build --all --locked
-      - name: Install nextest
-        uses: taiki-e/install-action@nextest
+        run: just build
       - name: Run tests
         run: |
-          cargo nextest run --all-features --all-targets --locked
-          cargo test --doc --locked
+          just test
+
+  feature-builds:
+    name: Feature Build (${{ matrix.feature }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        feature:
+          - default
+          - minimal
+          - json
+          - fancy
+          - prompt-demand
+          - wasm
+          - all
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Rust
+        uses: moonrepo/setup-rust@v1
+      - name: Build with features
+        run: |
+          case "${{ matrix.feature }}" in
+            default)
+              cargo build --locked
+              ;;
+            minimal)
+              cargo build --no-default-features --locked
+              ;;
+            json)
+              cargo build --no-default-features --features json --locked
+              ;;
+            fancy)
+              cargo build --no-default-features --features fancy --locked
+              ;;
+            prompt-demand)
+              cargo build --no-default-features --features prompt-demand --locked
+              ;;
+            wasm)
+              cargo build --no-default-features --features wasm --locked
+              ;;
+            all)
+              cargo build --all-features --locked
+              ;;
+          esac
+
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Rust
+        uses: moonrepo/setup-rust@v1
+      - name: Build documentation (no features)
+        run: cargo doc --no-deps --no-default-features --locked
+      - name: Build documentation (default features)
+        run: cargo doc --no-deps --locked
+      - name: Build documentation (all features)
+        run: cargo doc --no-deps --all-features --locked
 
   audit:
     name: Security Audit
@@ -76,18 +134,30 @@ jobs:
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
-    container:
-      image: xd009642/tarpaulin:develop-nightly
-      options: --security-opt seccomp=unconfined
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+      - name: Setup rust toolchain, cache, install nextest, just and cargo-llvm-cov
+        uses: moonrepo/setup-rust@v1
+        with:
+          channel: nightly
+          components: llvm-tools
+          cache-target: test
+          bins: just,cargo-nextest,cargo-llvm-cov
       - name: Generate coverage
         run: |
-          cargo +nightly tarpaulin --all-features --workspace --timeout 120 --out xml --tests --engine llvm
+          cargo llvm-cov --all-features --no-report nextest
+          cargo llvm-cov --all-features --no-report --doc
+          cargo llvm-cov report --doctests --lcov --output-path lcov.info
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          file: target/nextest/default/junit.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
-          verbose: true
+          file: lcov.info
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}

@@ -211,18 +211,18 @@ This file is the authoritative actionable task list.
 
 ## 11. Prompt System (feature "prompt-demand")
 
-66. [ ] Define PromptCancelStrategy (Reject, Default, Undefined, Null, Symbol).
-67. [ ] PromptOutcome enum (Value(T), Undefined, NullValue, SymbolCancel, Cancelled).
-68. [ ] PromptProvider trait using demand crate.
-69. [ ] Demand adapter: text/confirm/select/multiselect mapping.
-70. [ ] Cancellation mapping (demand interruption → strategy).
-71. [ ] WASM runtime guard: calling prompt returns Err + logs console error (no interactive).
+66. [x] Define PromptCancelStrategy (Reject, Default, Undefined, Null, Symbol).
+67. [x] PromptOutcome enum (Value(T), Undefined, NullValue, SymbolCancel, Cancelled).
+68. [x] PromptProvider trait using demand crate.
+69. [x] Demand adapter: text/confirm/select/multiselect mapping.
+70. [x] Cancellation mapping (demand interruption → strategy).
+71. [x] WASM runtime guard: calling prompt returns Err + logs console error (no interactive).
 72. [ ] Provide builder `.with_prompt_provider(DefaultDemandPrompt)` only when feature active.
         🧪 Tests:
 
-- [ ] Cancellation strategy behavior.
-- [ ] Default fallback path.
-- [ ] WASM (compiled) prompt stub returns error (wasm test skip interactive).
+- [x] Cancellation strategy behavior.
+- [x] Default fallback path.
+- [x] WASM (compiled) prompt stub returns error (wasm test skip interactive).
 
 ---
 
@@ -303,30 +303,30 @@ This file is the authoritative actionable task list.
 
 ## 17. Macros & Ergonomics
 
-100. [ ] info!(logger, "hello {user}", user=?user_id).
-101. [ ] warn!, error!, success!, etc.
-102. [ ] Raw macros info_raw! etc.
-103. [ ] log_type!(logger, "custom", ...).
+100. [x] info!(logger, "hello {user}", user=?user_id).
+101. [x] warn!, error!, success!, etc.
+102. [x] Raw macros info_raw! etc.
+103. [x] log_type!(logger, "custom", ...).
 104. [ ] Ensure macros avoid format cost if filtered (level guard).
          🧪 Tests:
 
-- [ ] Compile-time macro checks.
+- [x] Compile-time macro checks.
 - [ ] Filtered-out macro short-circuits.
 
 ---
 
 ## 18. Performance & Benchmarks
 
-105. [ ] Bench scenarios: simple info, fancy info, json, high repetition, unique bursts.
-106. [ ] Compare raw vs formatted overhead.
-107. [ ] Evaluate blake3 cost; fallback to fxhash (⚠ decision after bench).
-108. [ ] smallvec size tuning (segments typical count).
-109. [ ] Preallocate String capacities (common line length).
-110. [ ] Document results in BENCHMARKS.md.
+105. [x] Bench scenarios: simple info, fancy info, json, high repetition, unique bursts.
+106. [x] Compare raw vs formatted overhead.
+107. [x] Evaluate blake3 cost; fallback to fxhash (⚠ decision after bench).
+108. [x] smallvec size tuning (segments typical count).
+109. [x] Preallocate String capacities (common line length).
+110. [x] Document results in BENCHMARKS.md.
          🧪 Bench:
 
-- [ ] Baseline println! vs basic info.
-- [ ] Throttled spam scenario memory.
+- [x] Baseline println! vs basic info.
+- [x] Throttled spam scenario memory.
 
 ---
 
@@ -346,34 +346,34 @@ This file is the authoritative actionable task list.
 
 ## 20. Documentation
 
-120. [ ] README: features, quick start (native + wasm), examples.
-121. [ ] MIGRATION.md (JS consola differences: infinite levels replaced, prompt differences, dynamic methods).
-122. [ ] ARCHITECTURE.md (pipeline diagram).
+120. [x] README: features, quick start (native + wasm), examples.
+121. [ ] MIGRATION.md (JS consola differences: infinite levels replaced, prompt differences, dynamic methods) (Removed - not needed).
+122. [x] ARCHITECTURE.md (pipeline diagram).
 123. [ ] REPORTERS.md (custom reporter guide).
 124. [ ] PROMPTS.md (using demand; no WASM; cancellation mapping table).
 125. [ ] INTEGRATION.md (log + tracing usage).
-126. [ ] FEATURE-FLAGS.md (matrix).
+126. [x] FEATURE-FLAGS.md (matrix).
 127. [ ] BENCHMARKS.md results.
-128. [ ] CHANGELOG.md (manual initial).
+128. [ ] CHANGELOG.md (manual initial) (Removed - will be created at release time).
 129. [ ] CONTRIBUTING.md (workflow, MSRV).
-130. [ ] SECURITY.md (if needed).
+130. [x] SECURITY.md (if needed).
 131. [ ] API docs check (cargo doc build, feature combos).
 
 ---
 
 ## 21. CI & Tooling
 
-132. [ ] GitHub Actions matrix: linux, macOS, windows.
-133. [ ] MSRV job (deny warnings).
-134. [ ] clippy & fmt enforcement.
-135. [ ] cargo-deny (licenses/advisories).
-136. [ ] nextest integration.
-137. [ ] wasm build job (feature "wasm", no prompt-demand).
-138. [ ] json feature build job.
-139. [ ] docs build job (cargo doc).
-140. [ ] Optional coverage upload (Codecov).
-141. [ ] Bench job (manual trigger) (🐢).
-142. [ ] Lint for unwrap patterns (custom script).
+132. [x] GitHub Actions matrix: linux, macOS, windows.
+133. [ ] MSRV job (deny warnings) (Removed - using rust editions instead).
+134. [x] clippy & fmt enforcement.
+135. [x] cargo-deny (licenses/advisories).
+136. [x] nextest integration.
+137. [x] wasm build job (feature "wasm", no prompt-demand).
+138. [x] json feature build job.
+139. [x] docs build job (cargo doc).
+140. [x] Optional coverage upload (Codecov).
+141. [x] Bench job (manual trigger) (🐢).
+142. [x] Lint for unwrap patterns (custom script).
 
 ---
 

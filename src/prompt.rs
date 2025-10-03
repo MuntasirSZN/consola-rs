@@ -105,6 +105,33 @@ pub trait PromptProvider: Send + Sync {
     ) -> Result<PromptOutcome<Vec<usize>>, PromptError>;
 }
 
+/// Check if we're running in a browser environment
+#[cfg(target_arch = "wasm32")]
+fn is_browser() -> bool {
+    #[cfg(feature = "wasm")]
+    {
+        // Use wasm_bindgen to check for browser-specific globals
+        use wasm_bindgen::JsValue;
+
+        // Try to get the global 'window' object
+        let global = js_sys::global();
+        let window = js_sys::Reflect::get(&global, &JsValue::from_str("window"));
+
+        // If window exists and is not undefined, we're likely in a browser
+        window.is_ok() && !window.unwrap().is_undefined()
+    }
+    #[cfg(not(feature = "wasm"))]
+    {
+        // If wasm feature isn't enabled but we're on wasm32, conservatively assume browser
+        true
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn is_browser() -> bool {
+    false
+}
+
 /// Default prompt provider using the demand crate
 #[cfg(feature = "prompt-demand")]
 pub struct DefaultDemandPrompt {
@@ -142,6 +169,11 @@ impl PromptProvider for DefaultDemandPrompt {
         prompt: &str,
         default: Option<&str>,
     ) -> Result<PromptOutcome<String>, PromptError> {
+        // Check if we're in a browser at runtime
+        if is_browser() {
+            return Err(PromptError::NotSupported);
+        }
+
         let mut input = demand::Input::new(prompt);
         if let Some(def) = default {
             input = input.placeholder(def);
@@ -169,6 +201,11 @@ impl PromptProvider for DefaultDemandPrompt {
         prompt: &str,
         default: Option<bool>,
     ) -> Result<PromptOutcome<bool>, PromptError> {
+        // Check if we're in a browser at runtime
+        if is_browser() {
+            return Err(PromptError::NotSupported);
+        }
+
         let confirm = demand::Confirm::new(prompt);
         // Note: demand::Confirm doesn't expose a method to set default in v1.7
 
@@ -190,6 +227,11 @@ impl PromptProvider for DefaultDemandPrompt {
     }
 
     fn select(&self, prompt: &str, options: &[&str]) -> Result<PromptOutcome<usize>, PromptError> {
+        // Check if we're in a browser at runtime
+        if is_browser() {
+            return Err(PromptError::NotSupported);
+        }
+
         // For now, implement a simple text-based selection
         // This is a simplified implementation until we can properly use demand::Select
         let mut input_text = format!("{}\nOptions:\n", prompt);
@@ -220,6 +262,11 @@ impl PromptProvider for DefaultDemandPrompt {
         prompt: &str,
         options: &[&str],
     ) -> Result<PromptOutcome<Vec<usize>>, PromptError> {
+        // Check if we're in a browser at runtime
+        if is_browser() {
+            return Err(PromptError::NotSupported);
+        }
+
         // For now, implement a simple text-based multi-selection
         let mut input_text = format!("{}\nOptions:\n", prompt);
         for (i, opt) in options.iter().enumerate() {
@@ -240,46 +287,6 @@ impl PromptProvider for DefaultDemandPrompt {
             }
             Err(_e) => Ok(self.map_cancellation()),
         }
-    }
-}
-
-/// Browser stub for prompt provider (always returns NotSupported error)
-/// Note: This is for browser environments. WASM in Node.js or Wasmer may work.
-#[cfg(feature = "wasm")]
-pub struct WasmPromptStub;
-
-#[cfg(feature = "wasm")]
-impl PromptProvider for WasmPromptStub {
-    fn text(
-        &self,
-        _prompt: &str,
-        _default: Option<&str>,
-    ) -> Result<PromptOutcome<String>, PromptError> {
-        Err(PromptError::NotSupported)
-    }
-
-    fn confirm(
-        &self,
-        _prompt: &str,
-        _default: Option<bool>,
-    ) -> Result<PromptOutcome<bool>, PromptError> {
-        Err(PromptError::NotSupported)
-    }
-
-    fn select(
-        &self,
-        _prompt: &str,
-        _options: &[&str],
-    ) -> Result<PromptOutcome<usize>, PromptError> {
-        Err(PromptError::NotSupported)
-    }
-
-    fn multiselect(
-        &self,
-        _prompt: &str,
-        _options: &[&str],
-    ) -> Result<PromptOutcome<Vec<usize>>, PromptError> {
-        Err(PromptError::NotSupported)
     }
 }
 
@@ -324,14 +331,10 @@ mod tests {
         assert_eq!(prompt.cancel_strategy, PromptCancelStrategy::Reject);
     }
 
-    #[cfg(feature = "wasm")]
     #[test]
-    fn test_wasm_stub_returns_not_supported() {
-        let stub = WasmPromptStub;
-        let result = stub.text("test", None);
-        assert!(matches!(result, Err(PromptError::NotSupported)));
-
-        let result = stub.confirm("test", None);
-        assert!(matches!(result, Err(PromptError::NotSupported)));
+    fn test_is_browser_on_native() {
+        // On native platforms, is_browser() should always return false
+        #[cfg(not(target_arch = "wasm32"))]
+        assert!(!is_browser());
     }
 }

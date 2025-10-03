@@ -217,6 +217,7 @@ dependencies = [
  "divan",
  "insta",
  "jiff",
+ "js-sys",
  "libc",
  "log",
  "once_cell",

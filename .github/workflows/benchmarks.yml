@@ -26,4 +26,3 @@ jobs:
         with:
           mode: instrumentation
           run: cargo codspeed run
-          token: ${{ secrets.CODSPEED_TOKEN }}

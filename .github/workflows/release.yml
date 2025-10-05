@@ -30,7 +30,7 @@ jobs:
           channel: stable
 
       - name: Publish to crates.io
-        run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish
 
   release:
     name: Create GitHub Release

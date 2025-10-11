@@ -385,18 +385,6 @@ Check for:
 - Terminal in raw mode from previous operations
 - Conflicting readline configurations
 
-### "Prompts return errors in WASM"
-
-This is expected behavior in browser environments. Prompts are not supported in browsers. For WASM targets, avoid enabling `prompt-demand`:
-
-```toml
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-consola = { version = "0.0.0-alpha.0", features = ["prompt-demand"] }
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-consola = { version = "0.0.0-alpha.0", features = ["wasm"] }
-```
-
 ## Examples
 
 See `examples/prompts.rs` in the repository for complete working examples.

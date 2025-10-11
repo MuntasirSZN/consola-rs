@@ -332,15 +332,15 @@ This file is the authoritative actionable task list.
 
 ## 19. Testing & Quality
 
-111. [ ] Snapshot tests (insta) for basic/fancy/box outputs (strip ANSI).
-112. [ ] Property tests: randomized sequences (panic-free, final flush).
+111. [x] Snapshot tests (insta) for basic/fancy/box outputs (strip ANSI).
+112. [x] Property tests: randomized sequences (panic-free, final flush).
 113. [ ] Stress test: high concurrency (if multi-threaded use demonstrated).
 114. [ ] Fuzz error chain builder.
 115. [ ] Wasm tests behind feature gating.
 116. [ ] Coverage (tarpaulin) optional summary.
 117. [ ] Deterministic run repeat (two runs diff-free).
-118. [ ] No unwrap()/expect() outside tests (lint check).
-119. [ ] Unsafe code = 0 (assert).
+118. [x] No unwrap()/expect() outside tests (lint check).
+119. [x] Unsafe code = 0 (assert).
 
 ---
 
@@ -349,15 +349,15 @@ This file is the authoritative actionable task list.
 120. [x] README: features, quick start (native + wasm), examples.
 121. [ ] MIGRATION.md (JS consola differences: infinite levels replaced, prompt differences, dynamic methods) (Removed - not needed).
 122. [x] ARCHITECTURE.md (pipeline diagram).
-123. [ ] REPORTERS.md (custom reporter guide).
-124. [ ] PROMPTS.md (using demand; no WASM; cancellation mapping table).
+123. [x] REPORTERS.md (custom reporter guide).
+124. [x] PROMPTS.md (using demand; no WASM; cancellation mapping table).
 125. [ ] INTEGRATION.md (log + tracing usage).
 126. [x] FEATURE-FLAGS.md (matrix).
-127. [ ] BENCHMARKS.md results.
+127. [x] BENCHMARKS.md results.
 128. [ ] CHANGELOG.md (manual initial) (Removed - will be created at release time).
-129. [ ] CONTRIBUTING.md (workflow, MSRV).
+129. [x] CONTRIBUTING.md (workflow, MSRV).
 130. [x] SECURITY.md (if needed).
-131. [ ] API docs check (cargo doc build, feature combos).
+131. [x] API docs check (cargo doc build, feature combos).
 
 ---
 

@@ -288,7 +288,11 @@ fn snapshot_basic_log_types() {
     let mut outputs = Vec::new();
 
     for type_name in types {
-        let record = LogRecord::new(type_name, None, vec![format!("{} message", type_name).into()]);
+        let record = LogRecord::new(
+            type_name,
+            None,
+            vec![format!("{} message", type_name).into()],
+        );
         let mut buf: Vec<u8> = Vec::new();
         reporter.emit(&record, &mut buf).unwrap();
         outputs.push(String::from_utf8(buf).unwrap());
@@ -313,7 +317,11 @@ fn snapshot_fancy_log_types() {
     let mut outputs = Vec::new();
 
     for type_name in types {
-        let record = LogRecord::new(type_name, None, vec![format!("{} message", type_name).into()]);
+        let record = LogRecord::new(
+            type_name,
+            None,
+            vec![format!("{} message", type_name).into()],
+        );
         let mut buf: Vec<u8> = Vec::new();
         reporter.emit(&record, &mut buf).unwrap();
         outputs.push(String::from_utf8(buf).unwrap());

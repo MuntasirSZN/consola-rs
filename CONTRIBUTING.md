@@ -180,7 +180,7 @@ just watch
 - `cargo-nextest`: Faster test runner
 - `cargo-watch`: Auto-run tests on changes
 - `cargo-deny`: Security and license auditing
-- `cargo-tarpaulin`: Code coverage
+- `cargo-llvm-cov`: Code coverage
 - `cargo-insta`: Snapshot testing
 
 Install all at once:

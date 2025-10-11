@@ -6,7 +6,7 @@ This guide explains how to use interactive prompts in consola-rs powered by the 
 
 consola-rs provides interactive prompt capabilities through the optional `prompt-demand` feature, powered by the excellent [demand](https://docs.rs/demand) crate. Prompts allow you to collect user input in a rich, interactive way with validation and cancellation support.
 
-⚠️ **WASM Limitation**: Interactive prompts are **not available in WASM targets**. Calling prompt methods in WASM will return an error and log a warning to the browser.
+⚠️ **WASM Limitation**: Interactive prompts are **not available in WASM targets**. Calling prompt methods in WASM browser environments will return an error.
 
 ## Enabling Prompts
 
@@ -177,7 +177,7 @@ fn collect_user_info(logger: &mut BasicLogger) -> anyhow::Result<UserInfo> {
 When compiling for WASM (with the `wasm` feature), prompt methods will:
 
 1. Return `Err(anyhow::Error)` with a descriptive message
-2. Log an error to the browser
+2. Return an error if called in browser environments
 3. Not block or hang the application
 
 ### WASM Example
@@ -185,9 +185,9 @@ When compiling for WASM (with the `wasm` feature), prompt methods will:
 ```rust
 #[cfg(target_arch = "wasm32")]
 {
-    // This will return an error in WASM
+    // This will return an error in WASM browser environments
     match logger.prompt_text("This won't work in WASM") {
-        Ok(_) => unreachable!("Prompts don't work in WASM"),
+        Ok(_) => unreachable!("Prompts don't work in WASM browser environments"),
         Err(e) => {
             // Expected: "Interactive prompts are not available in WASM targets"
             logger.log("error", None, [format!("Prompt error: {}", e)]);
@@ -302,7 +302,7 @@ match logger.prompt_text("Enter value:") {
         // Handle errors:
         // - User interrupted (Ctrl+C with Reject strategy)
         // - Terminal not available
-        // - WASM environment
+        // - WASM browser environment
         // - IO errors
         logger.log("error", None, [format!("Prompt failed: {}", e)]);
     }
@@ -367,7 +367,7 @@ match logger.prompt_text("Enter value:") {
 | Linux | ✅ Full | All features supported |
 | macOS | ✅ Full | All features supported |
 | Windows | ✅ Full | Requires Windows 10+ for best experience |
-| WASM | ❌ Not supported | Returns error, use form inputs instead |
+| WASM (browser) | ❌ Not supported | Returns error, use form inputs instead |
 
 ## Troubleshooting
 
@@ -385,9 +385,9 @@ Check for:
 - Terminal in raw mode from previous operations
 - Conflicting readline configurations
 
-### "WASM compilation fails"
+### "Prompts return errors in WASM"
 
-Ensure you're not enabling `prompt-demand` for WASM:
+This is expected behavior in browser environments. Prompts are not supported in browsers. For WASM targets, avoid enabling `prompt-demand`:
 
 ```toml
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

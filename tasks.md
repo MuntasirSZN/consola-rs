@@ -339,8 +339,8 @@ This file is the authoritative actionable task list.
 115. [ ] Wasm tests behind feature gating.
 116. [ ] Coverage (tarpaulin) optional summary.
 117. [ ] Deterministic run repeat (two runs diff-free).
-118. [x] No unwrap()/expect() outside tests (lint check).
-119. [x] Unsafe code = 0 (assert).
+118. [ ] No unwrap()/expect() outside tests (lint check).
+119. [ ] Unsafe code = 0 (assert).
 
 ---
 
@@ -357,7 +357,7 @@ This file is the authoritative actionable task list.
 128. [ ] CHANGELOG.md (manual initial) (Removed - will be created at release time).
 129. [x] CONTRIBUTING.md (workflow, MSRV).
 130. [x] SECURITY.md (if needed).
-131. [x] API docs check (cargo doc build, feature combos).
+131. [ ] API docs check (cargo doc build, feature combos).
 
 ---
 

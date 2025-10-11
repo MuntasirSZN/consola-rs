@@ -6,7 +6,7 @@ This guide explains how to use interactive prompts in consola-rs powered by the 
 
 consola-rs provides interactive prompt capabilities through the optional `prompt-demand` feature, powered by the excellent [demand](https://docs.rs/demand) crate. Prompts allow you to collect user input in a rich, interactive way with validation and cancellation support.
 
-⚠️ **WASM Limitation**: Interactive prompts are **not available in WASM targets**. Calling prompt methods in WASM browser environments will return an error.
+⚠️ **Browser Limitation**: Interactive prompts are **not available in browser environments**. Calling prompt methods in WASM browser environments will return an error.
 
 ## Enabling Prompts
 

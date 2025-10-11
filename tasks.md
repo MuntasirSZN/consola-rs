@@ -332,8 +332,8 @@ ______________________________________________________________________
 
 ## 19. Testing & Quality
 
-111. [ ] Snapshot tests (insta) for basic/fancy/box outputs (strip ANSI).
-001. [ ] Property tests: randomized sequences (panic-free, final flush).
+111. [x] Snapshot tests (insta) for basic/fancy/box outputs (strip ANSI).
+001. [x] Property tests: randomized sequences (panic-free, final flush).
 001. [ ] Stress test: high concurrency (if multi-threaded use demonstrated).
 001. [ ] Fuzz error chain builder.
 001. [ ] Wasm tests behind feature gating.
@@ -349,8 +349,8 @@ ______________________________________________________________________
 120. [x] README: features, quick start (native + wasm), examples.
 001. [ ] MIGRATION.md (JS consola differences: infinite levels replaced, prompt differences, dynamic methods) (Removed - not needed).
 001. [x] ARCHITECTURE.md (pipeline diagram).
-001. [ ] REPORTERS.md (custom reporter guide).
-001. [ ] PROMPTS.md (using demand; no WASM; cancellation mapping table).
+001. [x] REPORTERS.md (custom reporter guide).
+001. [x] PROMPTS.md (using demand; no WASM; cancellation mapping table).
 001. [ ] INTEGRATION.md (log + tracing usage).
 001. [x] FEATURE-FLAGS.md (matrix).
 001. [x] BENCHMARKS.md results.

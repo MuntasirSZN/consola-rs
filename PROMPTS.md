@@ -6,7 +6,7 @@ This guide explains how to use interactive prompts in consola-rs powered by the 
 
 consola-rs provides interactive prompt capabilities through the optional `prompt-demand` feature, powered by the excellent [demand](https://docs.rs/demand) crate. Prompts allow you to collect user input in a rich, interactive way with validation and cancellation support.
 
-⚠️ **WASM Limitation**: Interactive prompts are **not available in WASM targets**. Calling prompt methods in WASM will return an error and log a warning to the browser console.
+⚠️ **WASM Limitation**: Interactive prompts are **not available in WASM targets**. Calling prompt methods in WASM will return an error and log a warning to the browser.
 
 ## Enabling Prompts
 
@@ -177,7 +177,7 @@ fn collect_user_info(logger: &mut BasicLogger) -> anyhow::Result<UserInfo> {
 When compiling for WASM (with the `wasm` feature), prompt methods will:
 
 1. Return `Err(anyhow::Error)` with a descriptive message
-2. Log an error to the browser console
+2. Log an error to the browser
 3. Not block or hang the application
 
 ### WASM Example

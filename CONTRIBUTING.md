@@ -154,25 +154,25 @@ CI must pass before merging. Check the Actions tab for results.
 
 ```bash
 # Format check
-make fmt-check
+just fmt-check
 
 # Lint
-make lint
+just lint
 
 # Build
-make build
+just build
 
 # Test
-make test
+just test
 
 # All checks (fmt + lint + test)
-make check
+just check
 
 # Install dev tools
-make install-tools
+just install-tools
 
 # Watch tests (requires cargo-watch)
-make watch
+just watch
 ```
 
 ### Recommended Tools
@@ -185,7 +185,7 @@ make watch
 
 Install all at once:
 ```bash
-make install-tools
+just install-tools
 ```
 
 ## Security

@@ -1,0 +1,9 @@
+---
+source: tests/snapshot_tests.rs
+expression: combined
+---
+[success] success message
+[warn] warn message
+[error] error message
+[debug] debug message
+[trace] trace message

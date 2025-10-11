@@ -1,0 +1,9 @@
+---
+source: tests/snapshot_tests.rs
+expression: combined
+---
+✔  SUCCESS  success message
+⚠  WARN  warn message
+✖  ERROR  error message
+🐛  DEBUG  debug message
+↳  TRACE  trace message

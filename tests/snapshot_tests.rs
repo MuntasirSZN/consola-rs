@@ -234,3 +234,91 @@ fn snapshot_fancy_with_box() {
     insta::assert_snapshot!("fancy_box_colored", colored);
     insta::assert_snapshot!("fancy_box_plain", plain);
 }
+
+// Test BasicReporter with raw logging (Task 111)
+#[test]
+fn snapshot_basic_raw() {
+    let reporter = BasicReporter {
+        opts: FormatOptions {
+            date: false,
+            colors: false,
+            ..FormatOptions::default()
+        },
+    };
+    let mut record = LogRecord::new("info", None, vec!["Raw log message".into()]);
+    record.is_raw = true;
+
+    let mut buf: Vec<u8> = Vec::new();
+    reporter.emit(&record, &mut buf).unwrap();
+    let output = String::from_utf8(buf).unwrap();
+    insta::assert_snapshot!("basic_raw", output);
+}
+
+// Test FancyReporter with raw logging (Task 111)
+#[test]
+fn snapshot_fancy_raw() {
+    let reporter = FancyReporter {
+        opts: FormatOptions {
+            date: false,
+            colors: false,
+            ..FormatOptions::default()
+        },
+    };
+    let mut record = LogRecord::new("info", None, vec!["Raw log message".into()]);
+    record.is_raw = true;
+
+    let mut buf: Vec<u8> = Vec::new();
+    reporter.emit(&record, &mut buf).unwrap();
+    let output = String::from_utf8(buf).unwrap();
+    insta::assert_snapshot!("fancy_raw", output);
+}
+
+// Test various log types with BasicReporter (Task 111)
+#[test]
+fn snapshot_basic_log_types() {
+    let reporter = BasicReporter {
+        opts: FormatOptions {
+            date: false,
+            colors: false,
+            ..FormatOptions::default()
+        },
+    };
+
+    let types = vec!["success", "warn", "error", "debug", "trace"];
+    let mut outputs = Vec::new();
+
+    for type_name in types {
+        let record = LogRecord::new(type_name, None, vec![format!("{} message", type_name).into()]);
+        let mut buf: Vec<u8> = Vec::new();
+        reporter.emit(&record, &mut buf).unwrap();
+        outputs.push(String::from_utf8(buf).unwrap());
+    }
+
+    let combined = outputs.join("");
+    insta::assert_snapshot!("basic_log_types", combined);
+}
+
+// Test various log types with FancyReporter (Task 111)
+#[test]
+fn snapshot_fancy_log_types() {
+    let reporter = FancyReporter {
+        opts: FormatOptions {
+            date: false,
+            colors: false,
+            ..FormatOptions::default()
+        },
+    };
+
+    let types = vec!["success", "warn", "error", "debug", "trace"];
+    let mut outputs = Vec::new();
+
+    for type_name in types {
+        let record = LogRecord::new(type_name, None, vec![format!("{} message", type_name).into()]);
+        let mut buf: Vec<u8> = Vec::new();
+        reporter.emit(&record, &mut buf).unwrap();
+        outputs.push(String::from_utf8(buf).unwrap());
+    }
+
+    let combined = outputs.join("");
+    insta::assert_snapshot!("fancy_log_types", combined);
+}

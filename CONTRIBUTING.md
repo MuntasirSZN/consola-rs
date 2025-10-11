@@ -95,22 +95,27 @@ fn snapshot_my_output() {
 ### Guidelines
 
 1. **No `unwrap()` / `expect()` outside tests**
+
    - Use `?` operator or proper error handling
    - Tests may use these for conciseness
 
-2. **Avoid `unsafe` code**
+1. **Avoid `unsafe` code**
+
    - Only for legitimate system calls (e.g., terminal size detection)
    - Document safety invariants
 
-3. **Thread safety**
+1. **Thread safety**
+
    - Use `parking_lot::RwLock` for shared state
    - Design for concurrent access
 
-4. **Error handling**
+1. **Error handling**
+
    - Use `anyhow` for application errors
    - Use `thiserror` for library errors
 
-5. **Performance**
+1. **Performance**
+
    - Avoid allocations in hot paths
    - Use `SmallVec` for small collections
    - Profile before optimizing
@@ -134,6 +139,7 @@ We use `clippy` with `-D warnings` (all warnings are errors). Fix all clippy war
 ### Guides
 
 When adding major features, update or create guides:
+
 - `README.md`: User-facing overview
 - `REPORTERS.md`: Custom reporter guide
 - `PROMPTS.md`: Interactive prompts
@@ -143,6 +149,7 @@ When adding major features, update or create guides:
 ## Continuous Integration
 
 Our CI runs on:
+
 - **Platforms**: Linux, macOS, Windows
 - **Checks**: Format, clippy, build, test, audit, coverage
 
@@ -184,13 +191,14 @@ just watch
 - `cargo-insta`: Snapshot testing
 
 Install all at once:
+
 ```bash
 just install-tools
 ```
 
 ## Security
 
-If you discover a security vulnerability, please email security@example.com (TODO: add actual email) instead of opening a public issue.
+If you discover a security vulnerability, please email <muntasir.joypurhat@gmail.com> instead of opening a public issue. See [SECURITY.md](./SECURITY.md) file for more info.
 
 ## Questions?
 
@@ -203,6 +211,6 @@ If you discover a security vulnerability, please email security@example.com (TOD
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
 
----
+______________________________________________________________________
 
 Thank you for contributing to consola-rs! 🎉

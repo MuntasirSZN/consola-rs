@@ -258,9 +258,9 @@ mod tests {
 ## Performance Considerations
 
 1. **Avoid allocations**: Use write! macros directly instead of building strings
-2. **Check options early**: Skip expensive formatting if options disable it
-3. **Cache styles**: Don't recreate style objects for every log
-4. **Lazy evaluation**: Only format error chains if show_stack is true
+1. **Check options early**: Skip expensive formatting if options disable it
+1. **Cache styles**: Don't recreate style objects for every log
+1. **Lazy evaluation**: Only format error chains if show_stack is true
 
 ## Complete Example: CSV Reporter
 

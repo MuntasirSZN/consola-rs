@@ -177,8 +177,8 @@ fn collect_user_info(logger: &mut BasicLogger) -> anyhow::Result<UserInfo> {
 When compiling for WASM (with the `wasm` feature), prompt methods will:
 
 1. Return `Err(anyhow::Error)` with a descriptive message
-2. Return an error if called in browser environments
-3. Not block or hang the application
+1. Return an error if called in browser environments
+1. Not block or hang the application
 
 ### WASM Example
 
@@ -312,31 +312,35 @@ match logger.prompt_text("Enter value:") {
 ## Best Practices
 
 1. **Provide clear prompts**: Make questions unambiguous
+
    ```rust
    // Good
    let name = logger.prompt_text("Enter your full name:")?;
-   
+
    // Better
    let name = logger.prompt_text("Enter your full name (e.g., John Doe):")?;
    ```
 
-2. **Use appropriate cancellation strategies**:
+1. **Use appropriate cancellation strategies**:
+
    - Required input → `Reject`
    - Optional input → `Default(value)`
    - User choice → `Undefined`
 
-3. **Validate input early**:
+1. **Validate input early**:
+
    ```rust
    let age_str = logger.prompt_text("Enter age (1-120):")?;
    let age: u32 = age_str.parse()
        .map_err(|_| anyhow::anyhow!("Invalid number"))?;
-   
+
    if age == 0 || age > 120 {
        return Err(anyhow::anyhow!("Age must be between 1 and 120"));
    }
    ```
 
-4. **Confirm destructive actions**:
+1. **Confirm destructive actions**:
+
    ```rust
    let confirmed = logger.prompt_confirm("Delete all files? This cannot be undone.")?;
    if !confirmed {
@@ -345,14 +349,15 @@ match logger.prompt_text("Enter value:") {
    }
    ```
 
-5. **Handle WASM gracefully**:
+1. **Handle WASM gracefully**:
+
    ```rust
    #[cfg(feature = "prompt-demand")]
    #[cfg(not(target_arch = "wasm32"))]
    fn interactive_setup(logger: &mut BasicLogger) {
        // Safe to use prompts
    }
-   
+
    #[cfg(target_arch = "wasm32")]
    fn interactive_setup(logger: &mut BasicLogger) {
        logger.log("warn", None, ["Interactive setup not available in browser"]);
@@ -374,6 +379,7 @@ match logger.prompt_text("Enter value:") {
 ### "Prompts don't work in my terminal"
 
 Some terminals may not support interactive features. Ensure:
+
 - Terminal is a TTY (not piped/redirected)
 - Terminal supports ANSI escape codes
 - stdin is not redirected
@@ -381,6 +387,7 @@ Some terminals may not support interactive features. Ensure:
 ### "Prompts hang or freeze"
 
 Check for:
+
 - Signal handlers interfering with Ctrl+C
 - Terminal in raw mode from previous operations
 - Conflicting readline configurations

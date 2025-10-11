@@ -44,11 +44,13 @@ consola-rs is structured as a modular logging library with several key component
 **Purpose**: Log level management and type registration
 
 **Key Types**:
+
 - `LogLevel(i16)`: Newtype wrapper for log levels
 - `LogTypeSpec`: Specification for custom log types
 - Type registry: Global `RwLock<HashMap<String, LogTypeSpec>>`
 
 **Constants**:
+
 ```rust
 pub const SILENT: LogLevel = LogLevel(-99);
 pub const FATAL: LogLevel = LogLevel(0);
@@ -69,6 +71,7 @@ pub const VERBOSE: LogLevel = LogLevel(99);
 **Purpose**: Log record data structure and argument handling
 
 **Key Types**:
+
 ```rust
 pub struct LogRecord {
     pub timestamp: Instant,
@@ -89,6 +92,7 @@ pub enum ArgValue {
 ```
 
 **Features**:
+
 - Flexible argument handling (primitives, errors, debug values)
 - JSON serialization support (feature: `json`)
 - Efficient storage using `SmallVec` for common cases
@@ -98,16 +102,19 @@ pub enum ArgValue {
 **Purpose**: Message deduplication and repetition counting
 
 **Algorithm**:
+
 1. Generate fingerprint: `blake3(type_name + args + tag + level)`
-2. Check if fingerprint matches previous log
-3. If within throttle window and count >= min_count: suppress and increment count
-4. On window expiry or different fingerprint: flush with repetition count
+1. Check if fingerprint matches previous log
+1. If within throttle window and count >= min_count: suppress and increment count
+1. On window expiry or different fingerprint: flush with repetition count
 
 **Configuration**:
+
 - `throttle_window_ms`: Time window for deduplication (default: 500ms)
 - `throttle_min_count`: Minimum occurrences before suppression (default: 2)
 
 **Clock Abstraction**:
+
 - `RealClock`: Uses system time
 - `MockClock`: Deterministic time for testing
 
@@ -116,11 +123,13 @@ pub enum ArgValue {
 **Purpose**: Transform LogRecord into styled segments
 
 **Pipeline**:
+
 ```
 LogRecord → FormatOptions → Segments → Styled Output
 ```
 
 **Segments**:
+
 - Time (optional)
 - Type/Level indicator
 - Tag (optional)
@@ -131,6 +140,7 @@ LogRecord → FormatOptions → Segments → Styled Output
 - Repetition count
 
 **FormatOptions**:
+
 ```rust
 pub struct FormatOptions {
     pub date: bool,
@@ -151,17 +161,20 @@ pub struct FormatOptions {
 **Implementations**:
 
 #### BasicReporter
+
 - Simple `[type] message` format
 - stderr for levels < 2, stdout otherwise
 - Error chain formatting with depth limiting
 
 #### FancyReporter (feature: `fancy`)
+
 - Icons for each log type (✔, ✖, ⚠, ℹ, etc.)
 - ASCII fallback for non-unicode terminals
 - Colored badges and type names
 - Enhanced stack trace formatting
 
 #### JsonReporter (feature: `json`)
+
 - Single-line JSON per log
 - Structured error chains
 - Deterministic key ordering
@@ -174,12 +187,14 @@ pub struct FormatOptions {
 **Purpose**: Extract and format Rust error source chains
 
 **Features**:
+
 - Recursive source extraction via `Error::source()`
 - Cycle detection (prevents infinite loops)
 - Depth limiting (via `FormatOptions.error_level`)
 - Multi-line message normalization
 
 **Format**:
+
 ```
 Error: Main error message
 Caused by:
@@ -193,6 +208,7 @@ Caused by:
 **Purpose**: Helper functions for formatting and output
 
 **Components**:
+
 - `strip_ansi`: Remove ANSI escape codes
 - Box drawing: Unicode and ASCII box characters
 - Tree formatting: Hierarchical output with proper indentation
@@ -204,6 +220,7 @@ Caused by:
 **Purpose**: Time abstraction for testability
 
 **Implementations**:
+
 - `RealClock`: `Instant::now()` wrapper
 - `MockClock`: Controllable time for deterministic tests
 
@@ -212,6 +229,7 @@ Caused by:
 **Purpose**: Interactive user input (feature: `prompt-demand`)
 
 **Key Types**:
+
 ```rust
 pub enum PromptCancelStrategy {
     Reject,     // Return error
@@ -244,6 +262,7 @@ pub trait PromptProvider {
 **Purpose**: Ergonomic logging API
 
 **Macro Types**:
+
 - Standard: `info!`, `warn!`, `error!`, `success!`, `debug!`, `trace!`, `fatal!`, `ready!`, `start!`, `fail!`
 - Custom: `log_type!(type_name, format, args)`
 - Raw: `info_raw!`, `warn_raw!`, `error_raw!`, etc.
@@ -326,9 +345,11 @@ Drain queue, process each log sequentially
 ### Global State
 
 **Type Registry**:
+
 ```rust
 static TYPE_REGISTRY: Lazy<RwLock<HashMap<String, LogTypeSpec>>> = ...;
 ```
+
 - Thread-safe via `parking_lot::RwLock`
 - Optimized for concurrent reads
 
@@ -420,19 +441,19 @@ Provides colored output with fancy formatting out of the box.
 ### Planned Improvements
 
 1. **Async Reporters**: Non-blocking output via async channels
-2. **Plugin System**: Dynamic reporter and formatter plugins
-3. **Middleware**: Pre/post processing hooks
-4. **Multi-sink Routing**: Different outputs for different log levels
-5. **Structured Logging**: First-class support for structured data
-6. **Span Support**: Integration with tracing spans
+1. **Plugin System**: Dynamic reporter and formatter plugins
+1. **Middleware**: Pre/post processing hooks
+1. **Multi-sink Routing**: Different outputs for different log levels
+1. **Structured Logging**: First-class support for structured data
+1. **Span Support**: Integration with tracing spans
 
 ### Potential Optimizations
 
 1. **String Interning**: Reduce allocations for repeated strings
-2. **Custom Allocators**: Arena allocation for log records
-3. **SIMD**: Vectorized operations for ANSI stripping
-4. **Lock-Free Queue**: For pause/resume buffering
+1. **Custom Allocators**: Arena allocation for log records
+1. **SIMD**: Vectorized operations for ANSI stripping
+1. **Lock-Free Queue**: For pause/resume buffering
 
----
+______________________________________________________________________
 
 For implementation details, see the source code in `src/`. For usage examples, see the [README](README.md) and other documentation files.

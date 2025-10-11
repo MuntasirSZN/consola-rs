@@ -5,9 +5,9 @@ Thanks for your interest! Early-stage MVP.
 ## Workflow
 
 1. Fork & branch from `main`.
-2. Ensure `cargo fmt`, `cargo clippy` pass (warnings tolerated during MVP).
-3. Add tests (nextest compatible) for new behavior.
-4. Submit PR referencing related task numbers from `tasks.md`.
+1. Ensure `cargo fmt`, `cargo clippy` pass (warnings tolerated during MVP).
+1. Add tests (nextest compatible) for new behavior.
+1. Submit PR referencing related task numbers from `tasks.md`.
 
 ## Feature Flags
 

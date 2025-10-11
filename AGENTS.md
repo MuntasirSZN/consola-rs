@@ -4,32 +4,33 @@
 
 consola-rs is a Rust + WASM port of [unjs/consola](https://github.com/unjs/consola), providing elegant console logging for both native Rust and browser environments. This is an early-stage MVP project (version 0.0.0-alpha.0) targeting feature parity with the JavaScript version while adding Rust-native capabilities.
 
-**Project Type**: Library crate  
-**Languages**: Rust (edition 2024, MSRV 1.85)  
-**Target Runtimes**: Native Rust + WebAssembly (WASM)  
+**Project Type**: Library crate\
+**Languages**: Rust (edition 2024, MSRV 1.85)\
+**Target Runtimes**: Native Rust + WebAssembly (WASM)\
 **Repository Size**: ~9 source files, ~30 test files, comprehensive feature system
 
 ## Build & Validation Commands
 
 ### Prerequisites
+
 - Rust 1.85+ (edition 2024)
 - cargo-nextest automatically installed in CI via taiki-e/install-action
-- `make` (optional, provides convenient shortcuts)
+- `just` (optional, provides convenient shortcuts)
 
 ### Core Commands (ALWAYS run these in order)
 
 ```bash
 # 1. Format check (REQUIRED - CI enforces this)
 cargo fmt --all -- --check
-# OR: make fmt-check
+# OR: just fmt-check
 
 # 2. Linting (REQUIRED - CI fails on warnings)
 cargo clippy --all-targets --all-features -- -D warnings
-# OR: make lint
+# OR: just lint
 
 # 3. Build all targets
 cargo build --all --locked
-# OR: make build
+# OR: just build
 
 # 4. Run tests (standard)
 cargo test --all-features -- --nocapture
@@ -38,18 +39,19 @@ cargo test --all-features -- --nocapture
 cargo install cargo-nextest  # Only needed once
 cargo nextest run --all-features --all-targets --locked
 cargo test --doc --locked  # Doc tests (nextest doesn't run these)
-# OR: make test (auto-detects nextest, falls back to cargo test)
+# OR: just test (auto-detects nextest, falls back to cargo test)
 
 # 6. Run all checks (format + lint + test)
-make check
+just check
 
 # 7. Install all development tools
-make install-tools
+just install-tools
 ```
 
 **Timing**: Full CI pipeline takes ~60-90 seconds. cargo-nextest installation via `cargo install` takes ~6 minutes on first run (CI uses cached install-action).
 
 ### Feature Combinations
+
 The project uses extensive feature gating. Test these builds when modifying dependencies or features:
 
 ```bash
@@ -75,33 +77,37 @@ The project includes several auxiliary CI workflows:
 - **Scheduled runs**: CI runs weekly on Sundays to catch dependency issues
 
 Use the Makefile for local development convenience:
+
 ```bash
-make help           # Show all available targets
-make pre-commit     # Run format + lint + test (mirrors CI)
-make watch          # Auto-run tests on file changes (requires cargo-watch)
-make install-tools  # Install all dev dependencies (nextest, deny, audit, tarpaulin)
+just help           # Show all available targets
+just pre-commit     # Run format + lint + test (mirrors CI)
+just watch          # Auto-run tests on file changes (requires cargo-watch)
+just install-tools  # Install all dev dependencies (nextest, deny, audit, tarpaulin)
 ```
 
 ## Project Architecture & Layout
 
 ### Source Structure (`src/`)
+
 - **`lib.rs`**: Main facade, re-exports all modules
 - **`levels.rs`**: Log level constants and type registry (global state with RwLock)
 - **`record.rs`**: LogRecord struct and argument handling
 - **`throttling.rs`**: Message deduplication and repetition counting
 - **`reporter.rs`**: BasicReporter, FancyReporter, JsonReporter implementations
 - **`format.rs`**: Formatting pipeline, segments, styling
-- **`error_chain.rs`**: Error source chain extraction with cycle detection  
+- **`error_chain.rs`**: Error source chain extraction with cycle detection
 - **`utils.rs`**: Box drawing, tree formatting, alignment helpers
 - **`clock.rs`**: Clock abstraction for deterministic testing
 
 ### Test Organization (`tests/`)
+
 - **Integration tests**: Separate files per major component
 - **Snapshot tests**: Uses `insta` crate for output validation (strips ANSI)
 - **Property tests**: Some use `proptest` for randomized testing
 - **WASM tests**: Gated behind `wasm-bindgen-test` (not run in CI currently)
 
 ### Key Configuration Files
+
 - **`Cargo.toml`**: Complex feature matrix, see `[features]` section
 - **`.github/workflows/ci.yml`**: Multi-platform CI (Linux, macOS, Windows) with separate jobs for fmt, clippy, test, audit, coverage
 - **`.github/workflows/committed.yml`**: Commit message linting (pull requests only)
@@ -115,16 +121,19 @@ make install-tools  # Install all dev dependencies (nextest, deny, audit, tarpau
 ## Common Issues & Workarounds
 
 ### Build Issues
-1. **Missing cargo-nextest**: Install with `cargo install cargo-nextest` (takes 5-6 minutes)
-2. **Feature conflicts**: Always use `--all-features` for consistency with CI
-3. **MSRV violations**: Project requires Rust 1.85+ (edition 2024)
 
-### Test Issues  
+1. **Missing cargo-nextest**: Install with `cargo install cargo-nextest` (takes 5-6 minutes)
+1. **Feature conflicts**: Always use `--all-features` for consistency with CI
+1. **MSRV violations**: Project requires Rust 1.85+ (edition 2024)
+
+### Test Issues
+
 1. **Broken pipe errors**: When running with `| head` or similar, ignore these - tests still pass
-2. **ANSI in snapshots**: Snapshot tests strip ANSI automatically, colored output is expected in logs
-3. **Timing-dependent tests**: Use MockClock for deterministic timestamps
+1. **ANSI in snapshots**: Snapshot tests strip ANSI automatically, colored output is expected in logs
+1. **Timing-dependent tests**: Use MockClock for deterministic timestamps
 
 ### Environment Variables
+
 - **`CONSOLA_LEVEL`**: Controls log level filtering (debug, info, warn, error)
 - **`NO_COLOR`**: Disables ANSI color output (handled by anstream)
 - **`FORCE_COLOR`**: Forces color output
@@ -136,24 +145,30 @@ make install-tools  # Install all dev dependencies (nextest, deny, audit, tarpau
 The CI pipeline runs as separate jobs (use Swatinem/rust-cache for faster builds):
 
 1. **Format Job** (`fmt`):
+
    - `cargo fmt --all -- --check` (zero tolerance)
 
-2. **Clippy Job** (`clippy`):
+1. **Clippy Job** (`clippy`):
+
    - `cargo clippy --all-targets --all-features -- -D warnings` (zero warnings)
 
-3. **Test Job** (`test`) - Matrix across Linux, macOS, Windows:
+1. **Test Job** (`test`) - Matrix across Linux, macOS, Windows:
+
    - `cargo build --all --locked`
    - `cargo nextest run --all-features --all-targets --locked` (using taiki-e/install-action)
    - `cargo test --doc --locked`
 
-4. **Audit Job** (`audit`):
+1. **Audit Job** (`audit`):
+
    - `cargo deny check` (via EmbarkStudios/cargo-deny-action)
 
-5. **Coverage Job** (`coverage`) - Linux only:
+1. **Coverage Job** (`coverage`) - Linux only:
+
    - `cargo +nightly tarpaulin` with llvm engine
    - Uploads to Codecov (requires `CODECOV_TOKEN` secret)
 
 ### Manual Verification Steps
+
 ```bash
 # Verify feature combinations work
 cargo check --no-default-features
@@ -165,28 +180,31 @@ CONSOLA_LEVEL=debug cargo test --test utils_tests
 NO_COLOR=1 cargo test --test fancy_tests
 
 # Run security/license checks locally
-make deny  # Requires cargo-deny
+just deny  # Requires cargo-deny
 
 # Run all pre-commit checks
-make pre-commit
+just pre-commit
 ```
 
 ## Development Workflow Notes
 
 ### Code Style Requirements
+
 - **No `unwrap()`/`expect()`** outside tests (enforced by future lint)
 - **Thread-safe by default**: Uses parking_lot::RwLock for global state
 - **Error handling**: Uses `anyhow` and `thiserror`, proper error chains
 - **Feature gates**: Prefer minimal dependencies, most integrations are optional
 
 ### Testing Strategy
+
 - **Unit tests**: Embedded in `src/lib.rs` and individual modules
 - **Integration tests**: Comprehensive test files in `tests/`
 - **Snapshot tests**: For output format validation (colored + plain text)
 - **Property tests**: For randomized input validation
 - **Mock infrastructure**: MockClock, TestSink for deterministic testing
 
-### WASM Considerations  
+### WASM Considerations
+
 - **WASM builds work** but have limited interactive capabilities
 - **Prompt features disabled** in WASM (runtime error if called)
 - **Test with**: `cargo build --features wasm` (adds wasm-bindgen)
@@ -195,31 +213,32 @@ make pre-commit
 
 1. **Trust these instructions**: They are validated and current. Only search if instructions are incomplete or incorrect.
 
-2. **Always run format/clippy first**: CI has zero tolerance for style violations.
+1. **Always run format/clippy first**: CI has zero tolerance for style violations.
 
-3. **Use nextest when available**: Mirrors CI more closely than `cargo test`. CI uses taiki-e/install-action for fast installation.
+1. **Use nextest when available**: Mirrors CI more closely than `cargo test`. CI uses taiki-e/install-action for fast installation.
 
-4. **Multi-platform CI**: Tests run on Linux, macOS, and Windows. Ensure compatibility across platforms.
+1. **Multi-platform CI**: Tests run on Linux, macOS, and Windows. Ensure compatibility across platforms.
 
-5. **Feature combinations matter**: Test at least default features and `--no-default-features`.
+1. **Feature combinations matter**: Test at least default features and `--no-default-features`.
 
-6. **MVP status**: Some features are incomplete (see tasks.md), focus on working functionality.
+1. **MVP status**: Some features are incomplete (see tasks.md), focus on working functionality.
 
-7. **Thread safety**: Global type registry uses RwLock, design for concurrent access.
+1. **Thread safety**: Global type registry uses RwLock, design for concurrent access.
 
-8. **Performance conscious**: Uses smallvec, blake3 for fingerprinting, optimized for logging hot paths.
+1. **Performance conscious**: Uses smallvec, blake3 for fingerprinting, optimized for logging hot paths.
 
-9. **Extensive documentation**: README, SPEC.md, tasks.md, and CONTRIBUTING.md contain detailed context.
+1. **Extensive documentation**: README, SPEC.md, tasks.md, and CONTRIBUTING.md contain detailed context.
 
-10. **Security/License auditing**: cargo-deny runs in CI. Test locally with `make deny` before committing.
+1. **Security/License auditing**: cargo-deny runs in CI. Test locally with `just deny` before committing.
 
-11. **Code coverage**: Tracked via tarpaulin + Codecov (nightly Rust, Linux only).
+1. **Code coverage**: Tracked via tarpaulin + Codecov (nightly Rust, Linux only).
 
 ## File Inventory (Root Level)
+
 ```
 ├── Cargo.lock                       # Dependency lock file
 ├── Cargo.toml                       # Main project configuration
-├── Makefile                         # Development shortcuts (make help)
+├── justfile                         # Development shortcuts (just help)
 ├── deny.toml                        # cargo-deny security/license config
 ├── CONTRIBUTING.md                  # Development workflow
 ├── LICENSE                          # MIT license

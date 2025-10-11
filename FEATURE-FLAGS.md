@@ -111,18 +111,21 @@ consola = { version = "0.0.0-alpha.0", features = [
 **Status**: ✅ Stable
 
 **Enables**:
+
 - ANSI color codes via `anstyle`
 - Cross-platform color support via `anstream`
 - `NO_COLOR` environment variable support
 - `FORCE_COLOR` environment variable support
 
 **Dependencies**:
+
 ```toml
 anstream = "0.6"
 anstyle = "1.0"
 ```
 
 **Example**:
+
 ```rust
 use consola::info;
 
@@ -131,6 +134,7 @@ info!("Colored output!");
 ```
 
 **Environment Variables**:
+
 - `NO_COLOR=1`: Disable all colors
 - `FORCE_COLOR=1`: Force colors even if not a TTY
 
@@ -141,17 +145,20 @@ info!("Colored output!");
 **Status**: ✅ Stable
 
 **Enables**:
+
 - `FancyReporter` with icons
 - Unicode box characters
 - Enhanced formatting
 - Badge-style log types
 
 **Dependencies**:
+
 ```toml
 unicode-width = "0.2"
 ```
 
 **Icons**:
+
 - ℹ info
 - ✔ success
 - ⚠ warn
@@ -170,18 +177,21 @@ unicode-width = "0.2"
 **Status**: ✅ Stable
 
 **Enables**:
+
 - `JsonReporter` for structured logging
 - JSON serialization of LogRecord
 - Structured error chains
 - Machine-readable output
 
 **Dependencies**:
+
 ```toml
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 ```
 
 **Schema**:
+
 ```json
 {
   "time": "2024-01-01T00:00:00Z",
@@ -197,6 +207,7 @@ serde_json = "1.0"
 ```
 
 **Use Cases**:
+
 - Log aggregation (ELK, Splunk, etc.)
 - Structured log parsing
 - API logging
@@ -209,6 +220,7 @@ serde_json = "1.0"
 **Status**: ✅ Stable
 
 **Enables**:
+
 - Interactive CLI prompts
 - Text input
 - Yes/No confirmation
@@ -217,11 +229,13 @@ serde_json = "1.0"
 - Cancellation handling
 
 **Dependencies**:
+
 ```toml
 demand = "1.7"
 ```
 
 **Example**:
+
 ```rust
 use consola::prompt::{DefaultDemandPrompt, PromptProvider, PromptCancelStrategy};
 
@@ -238,6 +252,7 @@ let choice = prompt.select("Choose option:", &["Option 1", "Option 2"])?;
 ```
 
 **Platform Support**:
+
 - ✅ Linux
 - ✅ macOS
 - ✅ Windows
@@ -250,27 +265,32 @@ let choice = prompt.select("Choose option:", &["Option 1", "Option 2"])?;
 **Status**: ⚠️ Experimental
 
 **Enables**:
+
 - WebAssembly compilation
 - Browser console output
 - WASM-bindgen exports
 
 **Dependencies**:
+
 ```toml
 wasm-bindgen = "0.2"
 ```
 
 **Limitations**:
+
 - No interactive prompts
 - Limited color support (browser-dependent)
 - No file I/O
 - Reduced functionality compared to native
 
 **Build Command**:
+
 ```bash
 wasm-pack build --target web --features wasm
 ```
 
 **JavaScript Usage**:
+
 ```javascript
 import init, { info, warn, error } from './pkg/consola.js';
 
@@ -286,17 +306,20 @@ info("Hello from WASM!");
 **Status**: 🚧 Planned
 
 **Enables**:
+
 - Integration with `log` crate
 - Route log crate messages through consola
 - Level mapping
 - Metadata preservation
 
 **Dependencies**:
+
 ```toml
 log = "0.4"
 ```
 
 **Example** (planned):
+
 ```rust
 use log::info;
 use consola::bridge::init_log_bridge;
@@ -314,18 +337,21 @@ info!("Message from log crate");
 **Status**: 🚧 Planned
 
 **Enables**:
+
 - Integration with `tracing` crate
 - Event and span support
 - Field capture
 - Context preservation
 
 **Dependencies**:
+
 ```toml
 tracing = "0.1"
 tracing-subscriber = "0.3"
 ```
 
 **Example** (planned):
+
 ```rust
 use tracing::info;
 use consola::bridge::ConsolaLayer;
@@ -345,12 +371,14 @@ info!("Message from tracing");
 **Status**: 🚧 Planned
 
 **Enables**:
+
 - Non-blocking log output
 - Async channel-based reporters
 - Background worker thread
 - Buffered output
 
 **Use Cases**:
+
 - High-throughput logging
 - Network-based reporters
 - Database logging
@@ -486,6 +514,6 @@ Approximate size impact of each feature (Release build with LTO):
 
 **A**: Features mainly affect binary size. Runtime overhead is minimal, especially with level filtering.
 
----
+______________________________________________________________________
 
 For more information, see the [README](README.md) and [ARCHITECTURE](ARCHITECTURE.md).

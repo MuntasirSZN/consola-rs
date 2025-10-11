@@ -37,6 +37,7 @@ consola = { version = "0.0.0-alpha.0", features = ["color", "fancy", "json"] }
 ```
 
 Available features:
+
 - `color` (default) - ANSI color support via `anstream`
 - `fancy` (default) - Fancy reporter with icons and enhanced formatting
 - `json` - JSON reporter for structured logging
@@ -131,6 +132,7 @@ error("This is an error");
 ### Basic Reporter (Default)
 
 Simple, clean output:
+
 ```
 [info] Application started
 [warn] Low disk space
@@ -140,6 +142,7 @@ Simple, clean output:
 ### Fancy Reporter (with `fancy` feature)
 
 Enhanced output with icons and colors:
+
 ```
 ℹ info    Application started
 ⚠ warn    Low disk space  
@@ -149,6 +152,7 @@ Enhanced output with icons and colors:
 ### JSON Reporter (with `json` feature)
 
 Structured JSON output for log aggregation:
+
 ```json
 {"time":"2024-01-01T00:00:00Z","level":4,"type":"info","message":"Application started"}
 ```
@@ -257,7 +261,6 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - [env_logger](https://docs.rs/env_logger) - Simple Rust logger
 - [tracing](https://docs.rs/tracing) - Application-level tracing
 
----
+______________________________________________________________________
 
 **Status**: Alpha - API may change. Not yet recommended for production use.
-

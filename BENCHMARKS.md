@@ -31,6 +31,7 @@ cargo bench --bench logging -- --baseline <name>
 ### Results Location
 
 Benchmark results are saved to:
+
 - `target/divan/` - Performance data
 - Console output - Summary statistics
 
@@ -46,11 +47,13 @@ Tests fundamental logging operations:
 - `error_macro`: Error messages
 - `debug_macro`: Debug messages
 
-**Expected Performance**: 
+**Expected Performance**:
+
 - Simple logging: ~100-500 ns/op
 - With arguments: ~200-800 ns/op
 
 **Optimization Focus**:
+
 - Minimize allocation overhead
 - Efficient format string processing
 - Fast type lookups
@@ -65,6 +68,7 @@ Compares raw logging (bypass formatting) vs normal formatted logging:
 - `raw_with_args`: Raw with arguments
 
 **Expected Performance**:
+
 - Raw logging should be 30-50% faster than formatted
 - Overhead of formatting: ~100-300 ns
 
@@ -80,11 +84,13 @@ Tests throttling and deduplication with varying repetition counts:
 - `unique_messages/*`: Unique messages (no throttling)
 
 **Expected Performance**:
+
 - First message: Normal cost
 - Subsequent throttled: ~50-100 ns/op (just fingerprint check)
 - Unique messages: Full cost each time
 
 **Throughput**:
+
 - Throttled: 10-20M ops/sec
 - Unique: 1-5M ops/sec
 
@@ -98,6 +104,7 @@ Tests performance impact of different argument counts:
 - `five_args`: Five format arguments
 
 **Expected Performance**:
+
 - No args: ~150 ns/op
 - One arg: ~200 ns/op
 - Three args: ~250 ns/op
@@ -114,6 +121,7 @@ Tests performance with different message lengths:
 - `long_message`: ~200+ characters
 
 **Expected Performance**:
+
 - Short: ~150 ns/op
 - Medium: ~200 ns/op
 - Long: ~300 ns/op
@@ -130,6 +138,7 @@ Compares consola-rs against raw `println!`:
 - `consola_info_with_args`: info! with format args
 
 **Expected Performance**:
+
 - Target: consola overhead ≤ 2x println
 - Acceptable: 1.5-2x println overhead
 - Excellent: < 1.5x println overhead
@@ -140,24 +149,24 @@ Compares consola-rs against raw `println!`:
 
 ### Latency Targets (per operation)
 
-| Operation | Target | Acceptable | Current* |
+| Operation | Target | Acceptable | Current\* |
 |-----------|--------|-----------|----------|
 | Simple log | < 200 ns | < 500 ns | TBD |
 | With args | < 300 ns | < 800 ns | TBD |
 | Raw log | < 100 ns | < 300 ns | TBD |
 | Throttled (cached) | < 100 ns | < 200 ns | TBD |
 
-*Current performance to be measured and documented
+\*Current performance to be measured and documented
 
 ### Throughput Targets
 
-| Scenario | Target | Acceptable | Current* |
+| Scenario | Target | Acceptable | Current\* |
 |----------|--------|-----------|----------|
 | Simple info | > 5M ops/sec | > 2M ops/sec | TBD |
 | Throttled | > 10M ops/sec | > 5M ops/sec | TBD |
 | Unique messages | > 1M ops/sec | > 500K ops/sec | TBD |
 
-*Current performance to be measured and documented
+\*Current performance to be measured and documented
 
 ### Memory Targets
 
@@ -172,21 +181,25 @@ Compares consola-rs against raw `println!`:
 ### Completed Optimizations
 
 1. **SmallVec for Arguments**
+
    - Use `SmallVec` to avoid heap allocation for common cases
    - Typical log has 0-5 arguments, inline 4-8
    - Impact: Reduces allocations by ~80%
 
-2. **Blake3 for Fingerprinting**
+1. **Blake3 for Fingerprinting**
+
    - Fast cryptographic hash for deduplication
    - Consistent cross-platform behavior
    - Impact: ~2-5 µs per fingerprint
 
-3. **RwLock for Type Registry**
+1. **RwLock for Type Registry**
+
    - `parking_lot::RwLock` for better read performance
    - Most operations are reads (type lookups)
    - Impact: Minimal contention in multi-threaded scenarios
 
-4. **Raw Logging Path**
+1. **Raw Logging Path**
+
    - Bypass formatting pipeline entirely
    - Direct output for maximum performance
    - Impact: 30-50% faster than formatted
@@ -194,21 +207,25 @@ Compares consola-rs against raw `println!`:
 ### Planned Optimizations
 
 1. **String Interning** (Task 108)
+
    - Cache common log type names
    - Reduce allocations for repeated strings
    - Estimated impact: 10-20% faster for high-volume logging
 
-2. **Preallocated Buffers** (Task 109)
+1. **Preallocated Buffers** (Task 109)
+
    - Pre-allocate string buffers with typical sizes
    - Avoid reallocations during formatting
    - Estimated impact: 5-15% faster
 
-3. **Segment Arena Allocation** (Future)
+1. **Segment Arena Allocation** (Future)
+
    - Pool allocator for format segments
    - Reduce allocator pressure
    - Estimated impact: 10-20% faster
 
-4. **SIMD for ANSI Stripping** (Future)
+1. **SIMD for ANSI Stripping** (Future)
+
    - Vectorized ANSI escape code detection
    - Faster snapshot testing
    - Estimated impact: 2-5x faster ANSI stripping
@@ -343,18 +360,20 @@ Results are uploaded as artifacts for historical tracking.
 To detect performance regressions:
 
 1. Establish baseline:
+
    ```bash
    cargo bench -- --save-baseline main
    ```
 
-2. Make changes
+1. Make changes
 
-3. Compare:
+1. Compare:
+
    ```bash
    cargo bench -- --baseline main
    ```
 
-4. Criterion will report performance changes
+1. Criterion will report performance changes
 
 ## Hardware Notes
 
@@ -366,6 +385,7 @@ Benchmark results depend heavily on hardware:
 - **OS**: Linux preferred for consistent results
 
 Reference system (CI):
+
 - CPU: GitHub Actions Ubuntu runner (2 cores)
 - Memory: 7GB
 - OS: Ubuntu Latest
@@ -375,19 +395,18 @@ Reference system (CI):
 When optimizing:
 
 1. Run benchmarks before changes
-2. Save baseline: `cargo bench -- --save-baseline before`
-3. Make optimization
-4. Compare: `cargo bench -- --baseline before`
-5. Document improvements in PR
-6. Update this file with new strategies
+1. Save baseline: `cargo bench -- --save-baseline before`
+1. Make optimization
+1. Compare: `cargo bench -- --baseline before`
+1. Document improvements in PR
+1. Update this file with new strategies
 
 ## Questions?
 
 For performance-related questions or optimization ideas, open an issue on GitHub.
 
----
+______________________________________________________________________
 
-**Last Updated**: 2024-10-03  
-**Benchmark Version**: 0.0.0-alpha.0  
+**Last Updated**: 2024-10-03\
+**Benchmark Version**: 0.0.0-alpha.0\
 **Divan Version**: 0.1
-

@@ -363,6 +363,8 @@ pub struct Logger<R: Reporter + 'static> {
     queue: VecDeque<Pending>,
     system_clock: SystemClock,
     mock_fn: Option<MockFn>,
+    #[cfg(feature = "prompt-demand")]
+    prompt_provider: Option<Box<dyn crate::PromptProvider>>,
 }
 
 impl<R: Reporter + 'static> Logger<R> {
@@ -375,6 +377,8 @@ impl<R: Reporter + 'static> Logger<R> {
             queue: VecDeque::new(),
             system_clock: SystemClock,
             mock_fn: None,
+            #[cfg(feature = "prompt-demand")]
+            prompt_provider: None,
         }
     }
 
@@ -382,6 +386,19 @@ impl<R: Reporter + 'static> Logger<R> {
         self.throttler = Throttler::new(cfg.throttle.clone());
         self.cfg = cfg;
         self
+    }
+
+    /// Task 220: Set the prompt provider (only available with prompt-demand feature)
+    #[cfg(feature = "prompt-demand")]
+    pub fn with_prompt_provider(mut self, provider: Box<dyn crate::PromptProvider>) -> Self {
+        self.prompt_provider = Some(provider);
+        self
+    }
+
+    /// Get the prompt provider if available
+    #[cfg(feature = "prompt-demand")]
+    pub fn prompt_provider(&self) -> Option<&dyn crate::PromptProvider> {
+        self.prompt_provider.as_ref().map(|p| p.as_ref())
     }
 
     pub fn set_level(&mut self, level: LogLevel) {
@@ -853,6 +870,8 @@ pub struct LoggerBuilder<R: Reporter + 'static> {
     reporter: Option<R>,
     config: LoggerConfig,
     defaults: RecordDefaults,
+    #[cfg(feature = "prompt-demand")]
+    prompt_provider: Option<Box<dyn crate::PromptProvider>>,
 }
 
 impl<R: Reporter + 'static> LoggerBuilder<R> {
@@ -864,6 +883,8 @@ impl<R: Reporter + 'static> LoggerBuilder<R> {
             reporter: None,
             config: LoggerConfig::default(),
             defaults: RecordDefaults::default(),
+            #[cfg(feature = "prompt-demand")]
+            prompt_provider: None,
         }
     }
 
@@ -884,6 +905,13 @@ impl<R: Reporter + 'static> LoggerBuilder<R> {
 
     pub fn with_defaults(mut self, defaults: RecordDefaults) -> Self {
         self.defaults = defaults;
+        self
+    }
+
+    /// Task 220: Configure prompt provider (only available with prompt-demand feature)
+    #[cfg(feature = "prompt-demand")]
+    pub fn with_prompt_provider(mut self, provider: Box<dyn crate::PromptProvider>) -> Self {
+        self.prompt_provider = Some(provider);
         self
     }
 
@@ -912,7 +940,14 @@ impl<R: Reporter + 'static> LoggerBuilder<R> {
         R: Default,
     {
         let reporter = self.reporter.unwrap_or_default();
-        Logger::new(reporter).with_config(self.config)
+        let mut logger = Logger::new(reporter).with_config(self.config);
+
+        #[cfg(feature = "prompt-demand")]
+        if let Some(provider) = self.prompt_provider {
+            logger = logger.with_prompt_provider(provider);
+        }
+
+        logger
         // Note: defaults would need to be stored in Logger to be used during log calls
     }
 }

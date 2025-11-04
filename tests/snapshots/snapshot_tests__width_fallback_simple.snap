@@ -1,0 +1,8 @@
+---
+source: tests/snapshot_tests.rs
+expression: combined
+---
+[info] Simple ASCII text
+[info] Unicode: 你好世界
+[info] Emoji: 😀🎉
+[info] Mixed: Hello 世界 🌍

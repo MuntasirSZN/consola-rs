@@ -356,3 +356,158 @@ fn deterministic_timestamp_snapshots() {
 
     // This demonstrates deterministic timestamps for testing
 }
+
+// Task 112: Test capacity overflow strategy (drop oldest)
+#[test]
+fn pause_queue_capacity_overflow() {
+    use std::sync::{Arc, Mutex};
+
+    // Create logger with small queue capacity
+    let mut logger = Logger::new(BasicReporter::default()).with_config(LoggerConfig {
+        level: LogLevel::VERBOSE,
+        throttle: ThrottleConfig::default(),
+        queue_capacity: Some(3), // Only keep 3 items
+        clock: None,
+    });
+
+    // Capture the messages that actually get processed
+    let captured = Arc::new(Mutex::new(Vec::new()));
+    let captured_clone = Arc::clone(&captured);
+
+    logger.set_mock(move |record: &LogRecord| {
+        if let Some(msg) = &record.message {
+            captured_clone.lock().unwrap().push(msg.clone());
+        }
+    });
+
+    // Pause and send 5 messages (exceeds capacity of 3)
+    logger.pause();
+    logger.info("message 1 (should be dropped)");
+    logger.info("message 2 (should be dropped)");
+    logger.info("message 3 (should be kept)");
+    logger.info("message 4 (should be kept)");
+    logger.info("message 5 (should be kept)");
+
+    // Resume - only the last 3 messages should be processed
+    logger.resume();
+    logger.flush();
+
+    let messages = captured.lock().unwrap();
+    assert_eq!(messages.len(), 3, "Should only keep the last 3 messages");
+    assert_eq!(messages[0], "message 3 (should be kept)");
+    assert_eq!(messages[1], "message 4 (should be kept)");
+    assert_eq!(messages[2], "message 5 (should be kept)");
+}
+
+// Task 337: Stress test for high concurrency
+#[test]
+fn stress_test_high_concurrency() {
+    use std::sync::{Arc, Mutex};
+    use std::thread;
+
+    // Create a logger wrapped in Arc to share between threads
+    let logger = Arc::new(Mutex::new(Logger::new(MemoryReporter::default())));
+    let num_threads = 10;
+    let messages_per_thread = 100;
+
+    let mut handles = vec![];
+
+    for thread_id in 0..num_threads {
+        let logger_clone = Arc::clone(&logger);
+        let handle = thread::spawn(move || {
+            for msg_id in 0..messages_per_thread {
+                let mut logger = logger_clone.lock().unwrap();
+                logger.info(format!("Thread {} message {}", thread_id, msg_id));
+            }
+        });
+        handles.push(handle);
+    }
+
+    // Wait for all threads to complete
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    // Flush and verify
+    let mut logger = logger.lock().unwrap();
+    logger.flush();
+
+    let records = logger.reporter().get_records();
+
+    // Should have all messages (or close to it, accounting for possible throttling)
+    // At minimum, should have received messages from all threads
+    assert!(
+        records.len() >= num_threads,
+        "Should have messages from all threads, got {}",
+        records.len()
+    );
+
+    // Verify no panics occurred and logger is still functional
+    logger.info("Final message after stress test");
+    let final_records = logger.reporter().get_records();
+    assert!(
+        final_records.len() > records.len(),
+        "Logger should still be functional"
+    );
+}
+
+// Task 341: Deterministic run repeat test
+#[test]
+fn deterministic_run_repeat() {
+    use crate::clock::MockClock;
+
+    // Helper function to run a logging scenario
+    let run_scenario = || -> Vec<String> {
+        let mock_clock = MockClock::new();
+        let base_time = mock_clock.now();
+
+        let mut logger = Logger::new(MemoryReporter::default()).with_config(LoggerConfig {
+            level: LogLevel::VERBOSE,
+            throttle: ThrottleConfig::default(),
+            queue_capacity: None,
+            clock: Some(Box::new(mock_clock)),
+        });
+
+        // Perform deterministic logging operations
+        logger.info("First message");
+        logger.warn("Second message");
+        logger.error("Third message");
+
+        // Test throttling with same message
+        logger.info("Repeated");
+        logger.info("Repeated");
+        logger.info("Repeated");
+
+        logger.flush();
+
+        // Extract messages in order with relative timestamps
+        logger
+            .reporter()
+            .get_records()
+            .iter()
+            .map(|r| {
+                let duration_since_base = r.timestamp.duration_since(base_time);
+                format!("{:?} {} {:?}", duration_since_base, r.type_name, r.message)
+            })
+            .collect()
+    };
+
+    // Run the scenario twice
+    let run1 = run_scenario();
+    let run2 = run_scenario();
+
+    // Both runs should produce identical results
+    assert_eq!(
+        run1.len(),
+        run2.len(),
+        "Both runs should produce the same number of log records"
+    );
+
+    for (i, (msg1, msg2)) in run1.iter().zip(run2.iter()).enumerate() {
+        assert_eq!(
+            msg1, msg2,
+            "Message {} should be identical in both runs:\nRun 1: {}\nRun 2: {}",
+            i, msg1, msg2
+        );
+    }
+}

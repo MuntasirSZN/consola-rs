@@ -382,16 +382,21 @@ mod tests {
         expensive_called.store(false, Ordering::SeqCst);
         let previous_level = std::env::var("CONSOLA_LEVEL").ok();
 
-        unsafe { std::env::set_var("CONSOLA_LEVEL", "warn"); }
+        unsafe {
+            std::env::set_var("CONSOLA_LEVEL", "warn");
+        }
 
         info!("Test with expensive: {}", expensive_operation());
         assert!(!expensive_called.load(Ordering::SeqCst));
 
         if let Some(prev) = previous_level {
-
-            unsafe { std::env::set_var("CONSOLA_LEVEL", prev); }
+            unsafe {
+                std::env::set_var("CONSOLA_LEVEL", prev);
+            }
         } else {
-            unsafe { std::env::remove_var("CONSOLA_LEVEL"); }
+            unsafe {
+                std::env::remove_var("CONSOLA_LEVEL");
+            }
         }
     }
 }

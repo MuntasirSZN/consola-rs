@@ -331,7 +331,7 @@ fn snapshot_fancy_log_types() {
     insta::assert_snapshot!("fancy_log_types", combined);
 }
 
-// Task 127: Compare basic vs raw output side by side
+// Compare basic vs raw output side by side
 #[test]
 fn snapshot_basic_vs_raw_comparison() {
     let reporter = BasicReporter {
@@ -366,7 +366,7 @@ fn snapshot_basic_vs_raw_comparison() {
     insta::assert_snapshot!("basic_vs_raw_comparison", comparison);
 }
 
-// Task 128: Width fallback when unicode feature off (test with force_simple_width)
+// Width fallback when unicode feature off (test with force_simple_width)
 #[test]
 fn snapshot_width_fallback_simple() {
     let reporter = BasicReporter {

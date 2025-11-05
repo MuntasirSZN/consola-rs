@@ -106,7 +106,7 @@ fn error_chain_empty_source() {
     assert!(chain[0].contains("single error"));
 }
 
-// Task 338: Fuzz error chain builder with random inputs
+// Fuzz error chain builder with random inputs
 #[test]
 fn fuzz_error_chain_builder() {
     use anyhow::anyhow;

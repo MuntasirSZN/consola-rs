@@ -16,8 +16,6 @@
 #[macro_export]
 macro_rules! info {
     ($($arg:tt)*) => {{
-        // Task 310: Level guard to avoid format cost if filtered
-        // Note: This requires a global/thread-local logger in production
         if $crate::is_log_type_enabled("info") {
             $crate::log_message("info", &format!($($arg)*))
         }
@@ -85,7 +83,6 @@ macro_rules! success {
 #[macro_export]
 macro_rules! debug {
     ($($arg:tt)*) => {{
-        // Task 310: Level guard to avoid format cost if filtered
         if $crate::is_log_type_enabled("debug") {
             $crate::log_message("debug", &format!($($arg)*))
         }
@@ -104,7 +101,6 @@ macro_rules! debug {
 #[macro_export]
 macro_rules! trace {
     ($($arg:tt)*) => {{
-        // Task 310: Level guard to avoid format cost if filtered
         if $crate::is_log_type_enabled("trace") {
             $crate::log_message("trace", &format!($($arg)*))
         }
@@ -245,13 +241,33 @@ macro_rules! trace_raw {
 }
 
 /// Check if a log type is enabled (used by macros for level guard optimization)
-/// This is a placeholder - in a real implementation with a global/thread-local logger,
-/// this would check the actual logger's level setting
+/// Checks against CONSOLA_LEVEL environment variable if set, otherwise always enabled
 pub fn is_log_type_enabled(type_name: &str) -> bool {
-    use crate::level_for_type;
-    // For now, always return true in the placeholder
-    // In a real implementation, this would check against the logger's configured level
-    level_for_type(type_name).is_some()
+    use crate::{LogLevel, level_for_type};
+    use std::env;
+
+    // Get the type's level
+    let type_level = match level_for_type(type_name) {
+        Some(level) => level,
+        None => return true, // Unknown types are always enabled
+    };
+
+    // Check if we have a configured level from environment
+    if let Ok(level_str) = env::var("CONSOLA_LEVEL") {
+        // Try to parse as numeric level
+        if let Ok(level_num) = level_str.parse::<i16>() {
+            let configured_level = LogLevel(level_num);
+            return type_level <= configured_level;
+        }
+
+        // Try to parse as type name
+        if let Some(configured_level) = level_for_type(&level_str) {
+            return type_level <= configured_level;
+        }
+    }
+
+    // Default: all types enabled
+    true
 }
 
 /// Helper function to log a message (used by macros)
@@ -344,7 +360,6 @@ mod tests {
 
         // This test demonstrates that when is_log_type_enabled returns false,
         // the format! macro should not be evaluated
-        // Note: This is a conceptual test since our current implementation always enables all types
 
         // Create a flag to track if expensive operation runs
         let expensive_called = Arc::new(AtomicBool::new(false));
@@ -356,15 +371,13 @@ mod tests {
         };
 
         // Test that macros compile and run without panic
-        // In a real implementation with level filtering, this would verify
-        // that expensive_operation is not called when the level is filtered
         info!("Test with expensive: {}", expensive_operation());
 
-        // Since our is_log_type_enabled always returns true, expensive_operation will be called
+        // By default (no CONSOLA_LEVEL set), all types are enabled,
+        // so expensive_operation will be called
         assert!(expensive_called.load(Ordering::SeqCst));
 
-        // This test documents the intended behavior:
-        // When is_log_type_enabled("some_type") returns false,
-        // the format! and any expressions inside should not be evaluated
+        // When CONSOLA_LEVEL is set to a higher level (e.g., warn or error),
+        // info messages are filtered and expensive_operation won't be called
     }
 }

@@ -357,7 +357,7 @@ fn deterministic_timestamp_snapshots() {
     // This demonstrates deterministic timestamps for testing
 }
 
-// Task 112: Test capacity overflow strategy (drop oldest)
+// Test capacity overflow strategy (drop oldest)
 #[test]
 fn pause_queue_capacity_overflow() {
     use std::sync::{Arc, Mutex};
@@ -399,7 +399,7 @@ fn pause_queue_capacity_overflow() {
     assert_eq!(messages[2], "message 5 (should be kept)");
 }
 
-// Task 337: Stress test for high concurrency
+// Stress test for high concurrency
 #[test]
 fn stress_test_high_concurrency() {
     use std::sync::{Arc, Mutex};
@@ -451,7 +451,7 @@ fn stress_test_high_concurrency() {
     );
 }
 
-// Task 341: Deterministic run repeat test
+// Deterministic run repeat test
 #[test]
 fn deterministic_run_repeat() {
     use crate::clock::MockClock;

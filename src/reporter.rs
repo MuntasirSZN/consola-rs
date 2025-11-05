@@ -388,7 +388,7 @@ impl<R: Reporter + 'static> Logger<R> {
         self
     }
 
-    /// Task 220: Set the prompt provider (only available with prompt-demand feature)
+    /// Set the prompt provider (only available with prompt-demand feature)
     #[cfg(feature = "prompt-demand")]
     pub fn with_prompt_provider(mut self, provider: Box<dyn crate::PromptProvider>) -> Self {
         self.prompt_provider = Some(provider);
@@ -908,7 +908,7 @@ impl<R: Reporter + 'static> LoggerBuilder<R> {
         self
     }
 
-    /// Task 220: Configure prompt provider (only available with prompt-demand feature)
+    /// Configure prompt provider (only available with prompt-demand feature)
     #[cfg(feature = "prompt-demand")]
     pub fn with_prompt_provider(mut self, provider: Box<dyn crate::PromptProvider>) -> Self {
         self.prompt_provider = Some(provider);

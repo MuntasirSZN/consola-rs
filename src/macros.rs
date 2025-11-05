@@ -352,7 +352,7 @@ mod tests {
         trace_raw!("Raw trace");
     }
 
-    // Task 314: Test filtered-out macro short-circuits
+    // Test filtered-out macro short-circuits
     #[test]
     fn test_filtered_macro_short_circuit() {
         use std::sync::Arc;

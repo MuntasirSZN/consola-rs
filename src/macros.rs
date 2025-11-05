@@ -378,6 +378,18 @@ mod tests {
         assert!(expensive_called.load(Ordering::SeqCst));
 
         // When CONSOLA_LEVEL is set to a higher level (e.g., warn or error),
-        // info messages are filtered and expensive_operation won't be called
+        // info messages are filtered and expensive_operation won't be called.
+        expensive_called.store(false, Ordering::SeqCst);
+        let previous_level = std::env::var("CONSOLA_LEVEL").ok();
+        std::env::set_var("CONSOLA_LEVEL", "warn");
+
+        info!("Test with expensive: {}", expensive_operation());
+        assert!(!expensive_called.load(Ordering::SeqCst));
+
+        if let Some(prev) = previous_level {
+            std::env::set_var("CONSOLA_LEVEL", prev);
+        } else {
+            std::env::remove_var("CONSOLA_LEVEL");
+        }
     }
 }

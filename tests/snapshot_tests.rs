@@ -330,3 +330,70 @@ fn snapshot_fancy_log_types() {
     let combined = outputs.join("");
     insta::assert_snapshot!("fancy_log_types", combined);
 }
+
+// Compare basic vs raw output side by side
+#[test]
+fn snapshot_basic_vs_raw_comparison() {
+    let reporter = BasicReporter {
+        opts: FormatOptions {
+            date: false,
+            colors: false,
+            ..FormatOptions::default()
+        },
+    };
+
+    // Create formatted record
+    let formatted_record = LogRecord::new("info", None, vec!["Test message".into()]);
+    let mut formatted_buf: Vec<u8> = Vec::new();
+    reporter
+        .emit(&formatted_record, &mut formatted_buf)
+        .unwrap();
+    let formatted_output = String::from_utf8(formatted_buf).unwrap();
+
+    // Create raw record (same message)
+    let mut raw_record = LogRecord::new("info", None, vec!["Test message".into()]);
+    raw_record.is_raw = true;
+    let mut raw_buf: Vec<u8> = Vec::new();
+    reporter.emit(&raw_record, &mut raw_buf).unwrap();
+    let raw_output = String::from_utf8(raw_buf).unwrap();
+
+    // Combine outputs for comparison
+    let comparison = format!(
+        "=== Formatted Output ===\n{}\n=== Raw Output ===\n{}",
+        formatted_output, raw_output
+    );
+
+    insta::assert_snapshot!("basic_vs_raw_comparison", comparison);
+}
+
+// Width fallback when unicode feature off (test with force_simple_width)
+#[test]
+fn snapshot_width_fallback_simple() {
+    let reporter = BasicReporter {
+        opts: FormatOptions {
+            date: false,
+            colors: false,
+            force_simple_width: true, // Force character count instead of unicode width
+            ..FormatOptions::default()
+        },
+    };
+
+    // Test with unicode characters that have different byte/char/display widths
+    let test_messages = vec![
+        "Simple ASCII text",
+        "Unicode: 你好世界",    // Chinese characters
+        "Emoji: 😀🎉",          // Emoji
+        "Mixed: Hello 世界 🌍", // Mixed ASCII, Chinese, emoji
+    ];
+
+    let mut outputs = Vec::new();
+    for msg in test_messages {
+        let record = LogRecord::new("info", None, vec![msg.into()]);
+        let mut buf: Vec<u8> = Vec::new();
+        reporter.emit(&record, &mut buf).unwrap();
+        outputs.push(String::from_utf8(buf).unwrap());
+    }
+
+    let combined = outputs.join("");
+    insta::assert_snapshot!("width_fallback_simple", combined);
+}

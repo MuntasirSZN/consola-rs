@@ -15,9 +15,11 @@
 /// ```
 #[macro_export]
 macro_rules! info {
-    ($($arg:tt)*) => {
-        $crate::log_message("info", &format!($($arg)*))
-    };
+    ($($arg:tt)*) => {{
+        if $crate::is_log_type_enabled("info") {
+            $crate::log_message("info", &format!($($arg)*))
+        }
+    }};
 }
 
 /// Log a warning message
@@ -80,9 +82,11 @@ macro_rules! success {
 /// ```
 #[macro_export]
 macro_rules! debug {
-    ($($arg:tt)*) => {
-        $crate::log_message("debug", &format!($($arg)*))
-    };
+    ($($arg:tt)*) => {{
+        if $crate::is_log_type_enabled("debug") {
+            $crate::log_message("debug", &format!($($arg)*))
+        }
+    }};
 }
 
 /// Log a trace message
@@ -96,9 +100,11 @@ macro_rules! debug {
 /// ```
 #[macro_export]
 macro_rules! trace {
-    ($($arg:tt)*) => {
-        $crate::log_message("trace", &format!($($arg)*))
-    };
+    ($($arg:tt)*) => {{
+        if $crate::is_log_type_enabled("trace") {
+            $crate::log_message("trace", &format!($($arg)*))
+        }
+    }};
 }
 
 /// Log a fatal message
@@ -234,6 +240,36 @@ macro_rules! trace_raw {
     };
 }
 
+/// Check if a log type is enabled (used by macros for level guard optimization)
+/// Checks against CONSOLA_LEVEL environment variable if set, otherwise always enabled
+pub fn is_log_type_enabled(type_name: &str) -> bool {
+    use crate::{LogLevel, level_for_type};
+    use std::env;
+
+    // Get the type's level
+    let type_level = match level_for_type(type_name) {
+        Some(level) => level,
+        None => return true, // Unknown types are always enabled
+    };
+
+    // Check if we have a configured level from environment
+    if let Ok(level_str) = env::var("CONSOLA_LEVEL") {
+        // Try to parse as numeric level
+        if let Ok(level_num) = level_str.parse::<i16>() {
+            let configured_level = LogLevel(level_num);
+            return type_level <= configured_level;
+        }
+
+        // Try to parse as type name
+        if let Some(configured_level) = level_for_type(&level_str) {
+            return type_level <= configured_level;
+        }
+    }
+
+    // Default: all types enabled
+    true
+}
+
 /// Helper function to log a message (used by macros)
 pub fn log_message(type_name: &str, message: &str) {
     // This is a placeholder - in a real implementation, this would use
@@ -314,5 +350,53 @@ mod tests {
         success_raw!("Raw success");
         debug_raw!("Raw debug");
         trace_raw!("Raw trace");
+    }
+
+    // Test filtered-out macro short-circuits
+    #[test]
+    fn test_filtered_macro_short_circuit() {
+        use std::sync::Arc;
+        use std::sync::atomic::{AtomicBool, Ordering};
+
+        // This test demonstrates that when is_log_type_enabled returns false,
+        // the format! macro should not be evaluated
+
+        // Create a flag to track if expensive operation runs
+        let expensive_called = Arc::new(AtomicBool::new(false));
+        let expensive_called_clone = expensive_called.clone();
+
+        let expensive_operation = || {
+            expensive_called_clone.store(true, Ordering::SeqCst);
+            "expensive result"
+        };
+
+        // Test that macros compile and run without panic
+        info!("Test with expensive: {}", expensive_operation());
+
+        // By default (no CONSOLA_LEVEL set), all types are enabled,
+        // so expensive_operation will be called
+        assert!(expensive_called.load(Ordering::SeqCst));
+
+        // When CONSOLA_LEVEL is set to a higher level (e.g., warn or error),
+        // info messages are filtered and expensive_operation won't be called.
+        expensive_called.store(false, Ordering::SeqCst);
+        let previous_level = std::env::var("CONSOLA_LEVEL").ok();
+
+        unsafe {
+            std::env::set_var("CONSOLA_LEVEL", "warn");
+        }
+
+        info!("Test with expensive: {}", expensive_operation());
+        assert!(!expensive_called.load(Ordering::SeqCst));
+
+        if let Some(prev) = previous_level {
+            unsafe {
+                std::env::set_var("CONSOLA_LEVEL", prev);
+            }
+        } else {
+            unsafe {
+                std::env::remove_var("CONSOLA_LEVEL");
+            }
+        }
     }
 }

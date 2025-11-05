@@ -105,3 +105,72 @@ fn error_chain_empty_source() {
     assert_eq!(chain.len(), 1);
     assert!(chain[0].contains("single error"));
 }
+
+// Fuzz error chain builder with random inputs
+#[test]
+fn fuzz_error_chain_builder() {
+    use anyhow::anyhow;
+
+    // Test with various depth levels
+    for depth in 0..20 {
+        let mut err = anyhow!("base error");
+
+        // Build a chain of specified depth
+        for i in 0..depth {
+            err = err.context(format!("context layer {}", i));
+        }
+
+        let err_ref: &(dyn std::error::Error + 'static) = err.as_ref();
+        let chain = collect_chain(err_ref);
+
+        // Verify chain doesn't panic and has expected depth
+        assert_eq!(
+            chain.len(),
+            depth + 1, // base error + depth contexts
+            "Chain depth mismatch for depth {}",
+            depth
+        );
+
+        // Test formatting with various depth limits
+        for limit in &[1, 2, 5, 10, usize::MAX] {
+            let formatted = format_chain_lines(&chain, *limit);
+
+            // Should not panic and should respect limit
+            assert!(
+                formatted.len() <= *limit,
+                "Formatted chain exceeded limit {} (got {})",
+                limit,
+                formatted.len()
+            );
+
+            // Should not exceed actual chain length
+            assert!(
+                formatted.len() <= chain.len(),
+                "Formatted chain longer than actual chain"
+            );
+        }
+    }
+
+    // Test with very long messages
+    let long_message = "x".repeat(10000);
+    let err = anyhow!(long_message.clone());
+    let err_ref: &(dyn std::error::Error + 'static) = err.as_ref();
+    let chain = collect_chain(err_ref);
+    assert_eq!(chain.len(), 1);
+    assert!(chain[0].len() >= 1000); // Should preserve long messages
+
+    // Test with special characters
+    let special_chars = "Error with\nnewlines\tand\ttabs\rand\rcarriage\0returns";
+    let err = anyhow!(special_chars);
+    let err_ref: &(dyn std::error::Error + 'static) = err.as_ref();
+    let chain = collect_chain(err_ref);
+    assert_eq!(chain.len(), 1);
+    // Should not panic with special characters
+
+    // Test with empty string (edge case)
+    let err = anyhow!("");
+    let err_ref: &(dyn std::error::Error + 'static) = err.as_ref();
+    let chain = collect_chain(err_ref);
+    assert_eq!(chain.len(), 1);
+    // Empty error messages should be handled gracefully
+}

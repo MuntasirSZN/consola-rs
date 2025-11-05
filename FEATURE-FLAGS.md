@@ -2,6 +2,17 @@
 
 Complete feature matrix for consola-rs
 
+## ⚠️ Unstable Features (Task 277)
+
+The following features are **experimental or planned** and their API may change:
+
+- **`async-reporters`** (🚧 Planned): Non-blocking async reporters - API not yet stable
+- **`wasm`** (⚠️ Experimental): WebAssembly support - limited functionality, API may change
+- **`bridge-log`** (🚧 Planned): Integration with log crate - not yet implemented
+- **`bridge-tracing`** (🚧 Planned): Integration with tracing crate - not yet implemented
+
+**Recommendation**: Do not use unstable features in production without understanding the risks. APIs may change between versions without notice.
+
 ## Available Features
 
 ### Default Features

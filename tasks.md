@@ -109,7 +109,7 @@ ______________________________________________________________________
 
 - [x] Order preservation.
 - [x] Throttle boundary reset on resume.
-- [ ] Capacity overflow strategy (if implemented).
+- [x] Capacity overflow strategy (if implemented).
 
 ______________________________________________________________________
 
@@ -124,8 +124,8 @@ ______________________________________________________________________
 01. [x] NO_COLOR and FORCE_COLOR env respect (anstream detection).
     🧪 Tests:
 
-- [ ] Basic vs raw snapshot.
-- [ ] Width fallback when unicode feature off.
+- [x] Basic vs raw snapshot.
+- [x] Width fallback when unicode feature off.
 - [x] NO_COLOR strips style.
 
 ______________________________________________________________________
@@ -217,7 +217,7 @@ ______________________________________________________________________
 01. [x] Demand adapter: text/confirm/select/multiselect mapping.
 01. [x] Cancellation mapping (demand interruption → strategy).
 01. [x] WASM runtime guard: calling prompt returns Err + logs console error (no interactive).
-01. [ ] Provide builder `.with_prompt_provider(DefaultDemandPrompt)` only when feature active.
+01. [x] Provide builder `.with_prompt_provider(DefaultDemandPrompt)` only when feature active.
     🧪 Tests:
 
 - [x] Cancellation strategy behavior.
@@ -274,7 +274,7 @@ ______________________________________________________________________
 01. [~] from_env() reading: CONSOLA_LEVEL, NO_COLOR, CONSOLA_COMPACT. (CONSOLA_LEVEL implemented; NO_COLOR and CONSOLA_COMPACT in FormatOptions.adaptive())
 01. [x] Precedence: builder > env > defaults.
 01. [x] Option force_simple_width bool.
-01. [ ] Document unstable feature toggles (async-reporters etc).
+01. [x] Document unstable feature toggles (async-reporters etc).
     🧪 Tests:
 
 - [x] Env overrides.
@@ -307,11 +307,11 @@ ______________________________________________________________________
 001. [x] warn!, error!, success!, etc.
 001. [x] Raw macros info_raw! etc.
 001. [x] log_type!(logger, "custom", ...).
-001. [ ] Ensure macros avoid format cost if filtered (level guard).
+001. [x] Ensure macros avoid format cost if filtered (level guard).
      🧪 Tests:
 
 - [x] Compile-time macro checks.
-- [ ] Filtered-out macro short-circuits.
+- [x] Filtered-out macro short-circuits.
 
 ______________________________________________________________________
 
@@ -334,11 +334,11 @@ ______________________________________________________________________
 
 111. [x] Snapshot tests (insta) for basic/fancy/box outputs (strip ANSI).
 001. [x] Property tests: randomized sequences (panic-free, final flush).
-001. [ ] Stress test: high concurrency (if multi-threaded use demonstrated).
-001. [ ] Fuzz error chain builder.
+001. [x] Stress test: high concurrency (if multi-threaded use demonstrated).
+001. [x] Fuzz error chain builder.
 001. [ ] Wasm tests behind feature gating.
 001. [x] Coverage (tarpaulin) optional summary.
-001. [ ] Deterministic run repeat (two runs diff-free).
+001. [x] Deterministic run repeat (two runs diff-free).
 001. [x] No unwrap()/expect() outside tests (lint check).
 001. [x] Unsafe code = 0 (assert).
 

@@ -13,6 +13,9 @@ categories = ["development-tools"]
 [package.metadata]
 # Reserved for future metadata like MSRV or docs.rs config
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [workspace.metadata.cargo-nextest.profile.default]
 fail-fast = false
 retries = 1

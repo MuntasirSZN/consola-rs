@@ -32,6 +32,11 @@ pub mod bridge_tracing;
 #[cfg(feature = "bridge-tracing")]
 pub use bridge_tracing::*;
 
+#[cfg(feature = "wasm")]
+pub mod wasm;
+#[cfg(feature = "wasm")]
+pub use wasm::*;
+
 #[macro_use]
 pub mod macros;
 pub use macros::*;

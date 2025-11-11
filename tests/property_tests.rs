@@ -1,4 +1,6 @@
 // Property tests for randomized sequences (Task 112)
+#![cfg(not(target_arch = "wasm32"))]
+
 use consola::*;
 use proptest::prelude::*;
 

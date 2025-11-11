@@ -417,6 +417,11 @@ impl<R: Reporter + 'static> Logger<R> {
         self.cfg.level
     }
 
+    /// Get a reference to the logger's configuration
+    pub fn config(&self) -> &LoggerConfig {
+        &self.cfg
+    }
+
     pub fn reporter(&self) -> &R {
         &self.reporter
     }
@@ -538,6 +543,22 @@ impl<R: Reporter + 'static> Logger<R> {
     /// Clear the mock callback function.
     pub fn clear_mock(&mut self) {
         self.mock_fn = None;
+    }
+
+    /// Emit a pre-built LogRecord. This is useful for bridge implementations
+    /// that need to emit records from other logging systems.
+    /// The record will go through level filtering but skips throttling and pause/resume handling
+    /// to avoid double-buffering.
+    pub fn emit_record(&self, record: LogRecord) {
+        if !self.passes_level(&record) {
+            return;
+        }
+
+        // Note: We don't handle paused state here as bridges typically
+        // shouldn't buffer their own records - they should let the source
+        // logger handle buffering if needed. We also skip throttling for
+        // the same reason.
+        self.emit(&record);
     }
 
     fn passes_level(&self, record: &LogRecord) -> bool {

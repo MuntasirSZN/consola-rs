@@ -229,12 +229,12 @@ ______________________________________________________________________
 ## 12. WASM Integration (feature "wasm")
 
 73. [ ] Export create*logger / free_logger / log*\* / set_level / pause / resume via wasm-bindgen.
-01. [ ] JS shim example for variadic args & Error bridging.
-01. [ ] Error bridging: stack + message + one-level cause (JSON if needed).
-01. [ ] Provide fast path function `log_simple(type, &str)` for performance.
-01. [ ] Document build instructions (`wasm-pack build --target web`).
-01. [ ] Ensure prompt provider not compiled (no demand dependency) in wasm-only build.
-01. [ ] Logging color detection for browsers (maybe skip; always enable?) (⚠ doc).
+01. [x] JS shim example for variadic args & Error bridging.
+01. [x] Error bridging: stack + message + one-level cause (JSON if needed).
+01. [x] Provide fast path function `log_simple(type, &str)` for performance.
+01. [x] Document build instructions (`wasm-pack build --target web`).
+01. [x] Ensure prompt provider not compiled (no demand dependency) in wasm-only build.
+01. [x] Logging color detection for browsers (maybe skip; always enable?) (⚠ doc).
     🧪 Tests (wasm-bindgen-test):
 
 - [ ] Basic log works.
@@ -295,9 +295,9 @@ ______________________________________________________________________
 01. [ ] Document fingerprint inclusion of meta fields (toggle? ⚠).
     🧪 Tests:
 
-- [ ] log crate bridge basic.
-- [ ] tracing event field capture.
-- [ ] Recursion safety.
+- [x] log crate bridge basic.
+- [x] tracing event field capture.
+- [x] Recursion safety.
 
 ______________________________________________________________________
 
@@ -336,7 +336,7 @@ ______________________________________________________________________
 001. [x] Property tests: randomized sequences (panic-free, final flush).
 001. [x] Stress test: high concurrency (if multi-threaded use demonstrated).
 001. [x] Fuzz error chain builder.
-001. [ ] Wasm tests behind feature gating.
+001. [x] Wasm tests behind feature gating.
 001. [x] Coverage (tarpaulin) optional summary.
 001. [x] Deterministic run repeat (two runs diff-free).
 001. [x] No unwrap()/expect() outside tests (lint check).
@@ -404,12 +404,12 @@ ______________________________________________________________________
 
 ## 24. Risks & Mitigations
 
-159. [ ] Level sentinel confusion → Document mapping & convert unknown numeric to nearest.
-001. [ ] Fingerprint includes meta causing over-coalescing → Provide toggle `fingerprint_meta` (default false).
-001. [ ] Windows color edge cases → rely on anstream detection; add regression test.
-001. [ ] WASM size bloat → enable LTO + opt-level=z instructions in docs.
-001. [ ] Re-entrancy from log/tracing integration → thread local guard tests.
-001. [ ] Demand crate prompt cancellation semantics drift → version pin & compatibility note.
+159. [x] Level sentinel confusion → Document mapping & convert unknown numeric to nearest.
+001. [x] Fingerprint includes meta causing over-coalescing → Provide toggle `fingerprint_meta` (default false).
+001. [x] Windows color edge cases → rely on anstream detection; add regression test.
+001. [x] WASM size bloat → enable LTO + opt-level=z instructions in docs.
+001. [x] Re-entrancy from log/tracing integration → thread local guard tests.
+001. [x] Demand crate prompt cancellation semantics drift → version pin & compatibility note.
 
 ______________________________________________________________________
 

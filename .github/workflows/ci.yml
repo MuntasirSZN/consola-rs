@@ -26,8 +26,12 @@ jobs:
       - name: Check formatting
         run: just fmt-check
   clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
+    name: Clippy (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - name: Checkout
         uses: actions/checkout@71cf2267d89c5cb81562390fa70a37fa40b1305e # v6-beta
@@ -35,9 +39,9 @@ jobs:
         uses: moonrepo/setup-rust@ede6de059f8046a5e236c94046823e2af11ca670 # v1.2.2
         with:
           components: clippy
-          bins: just
+          bins: cargo-hack
       - name: Run clippy
-        run: just lint
+        run: cargo hack clippy --locked --optional-deps --each-feature --ignore-unknown-features -- -D warnings
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -57,50 +61,35 @@ jobs:
       - name: Run tests
         run: |
           just test
-  feature-builds:
-    name: Feature Build (${{ matrix.feature }})
+  test-wasm:
+    name: Test WASM
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        feature:
-          - default
-          - minimal
-          - json
-          - fancy
-          - prompt-demand
-          - wasm
-          - all
     steps:
       - name: Checkout
         uses: actions/checkout@71cf2267d89c5cb81562390fa70a37fa40b1305e # v6-beta
       - name: Setup Rust
         uses: moonrepo/setup-rust@ede6de059f8046a5e236c94046823e2af11ca670 # v1.2.2
-      - name: Build with features
-        run: |
-          case "${{ matrix.feature }}" in
-            default)
-              cargo build --locked
-              ;;
-            minimal)
-              cargo build --no-default-features --locked
-              ;;
-            json)
-              cargo build --no-default-features --features json --locked
-              ;;
-            fancy)
-              cargo build --no-default-features --features fancy --locked
-              ;;
-            prompt-demand)
-              cargo build --no-default-features --features prompt-demand --locked
-              ;;
-            wasm)
-              cargo build --no-default-features --features wasm --locked
-              ;;
-            all)
-              cargo build --all-features --locked
-              ;;
-          esac
+        with:
+          targets: wasm32-unknown-unknown
+          bins: wasm-pack
+      - name: Test WASM
+        run: wasm-pack test --headless --chrome
+  check:
+    name: Feature Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@71cf2267d89c5cb81562390fa70a37fa40b1305e # v6-beta
+      - name: Setup Rust
+        uses: moonrepo/setup-rust@ede6de059f8046a5e236c94046823e2af11ca670 # v1.2.2
+        with:
+          bins: cargo-hack
+      - name: Check
+        run: cargo hack check --locked --optional-deps --each-feature --ignore-unknown-features
   docs:
     name: Documentation
     runs-on: ubuntu-latest

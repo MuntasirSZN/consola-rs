@@ -961,7 +961,15 @@ impl<R: Reporter + 'static> LoggerBuilder<R> {
         R: Default,
     {
         let reporter = self.reporter.unwrap_or_default();
+
+        #[cfg(all(feature = "default", not(feature = "prompt-demand")))]
         let logger = Logger::new(reporter).with_config(self.config);
+
+        #[cfg(all(not(feature = "default"), not(feature = "prompt-demand")))]
+        let logger = Logger::new(reporter).with_config(self.config);
+
+        #[cfg(feature = "prompt-demand")]
+        let mut logger = Logger::new(reporter).with_config(self.config);
 
         #[cfg(feature = "prompt-demand")]
         let logger = if let Some(provider) = self.prompt_provider {

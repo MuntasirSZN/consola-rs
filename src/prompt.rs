@@ -106,7 +106,7 @@ pub trait PromptProvider: Send + Sync {
 }
 
 /// Check if we're running in a browser environment
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", feature = "prompt-demand"))]
 fn is_browser() -> bool {
     #[cfg(feature = "wasm")]
     {
@@ -135,7 +135,7 @@ fn is_browser() -> bool {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "prompt-demand"))]
 fn is_browser() -> bool {
     false
 }

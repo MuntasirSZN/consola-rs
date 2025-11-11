@@ -10,16 +10,14 @@ license = "MIT"
 keywords = ["ansi", "console", "logging", "wasm"]
 categories = ["development-tools"]
 
-[package.metadata]
-# Reserved for future metadata like MSRV or docs.rs config
-
-[lib]
-crate-type = ["cdylib", "rlib"]
-
 [workspace.metadata.cargo-nextest.profile.default]
 fail-fast = false
 retries = 1
 junit = { path = "junit.xml" }
+
+[[bench]]
+harness = false
+name = "logging"
 
 [dependencies]
 anstream = { version = "0.6.21", optional = true }
@@ -28,6 +26,7 @@ anyhow = "1.0.100"
 blake3 = "1.8.2"
 demand = { version = "1.7.2", optional = true }
 jiff = "0.2.16"
+js-sys = { version = "0.3.82", optional = true }
 libc = "0.2"
 log = { version = "0.4.28", optional = true }
 once_cell = "1.21.3"
@@ -43,17 +42,22 @@ tracing-subscriber = { version = "0.3.20", features = [
   "registry",
 ], optional = true }
 unicode-width = { version = "0.2.2", optional = true }
-wasm-bindgen = { version = "0.2.104", optional = true }
-js-sys = { version = "0.3.81", optional = true }
-web-sys = { version = "0.3.81", optional = true }
+wasm-bindgen = { version = "0.2.105", optional = true }
+web-sys = { version = "0.3.82", optional = true }
 
 [dev-dependencies]
-assert_fs = "1.1.3"
-divan = { version = "4.0.0", package = "codspeed-divan-compat" }
 insta = { version = "1.43.2", features = ["yaml"] }
-proptest = "1.9.0"
 rstest = "0.26.1"
-wasm-bindgen-test = { version = "0.3.54" }
+wasm-bindgen-test = { version = "0.3.55" }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+assert_fs = "1.1.3"
+divan = { package = "codspeed-divan-compat", version = "4.1.0" }
+proptest = "1.9.0"
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+getrandom = { version = "0.3", default-features = false, features = ["wasm_js"] }
+uuid = { version = "1.18.1", features = ["js"] }
 
 [features]
 default = ["color", "fancy"]
@@ -64,11 +68,7 @@ color = ["anstream", "anstyle"]
 fancy = ["unicode-width"]
 json = ["dep:serde", "dep:serde_json"]
 prompt-demand = ["dep:demand"]
-wasm = ["dep:wasm-bindgen", "dep:js-sys", "dep:web-sys"]
-
-[[bench]]
-name = "logging"
-harness = false
+wasm = ["dep:js-sys", "dep:wasm-bindgen", "dep:web-sys"]
 
 [profile.bench]
 lto = true

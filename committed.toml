@@ -1,2 +1,2 @@
-style="conventional"
-ignore_author_re="(dependabot|renovate)"
+style = "conventional"
+ignore_author_re = "(dependabot|renovate)"

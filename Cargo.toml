@@ -18,6 +18,10 @@ fail-fast = false
 retries = 1
 junit = { path = "junit.xml" }
 
+[[bench]]
+harness = false
+name = "logging"
+
 [dependencies]
 anstream = { version = "0.6.21", optional = true }
 anstyle = { version = "1.0.13", optional = true }
@@ -25,6 +29,7 @@ anyhow = "1.0.100"
 blake3 = "1.8.2"
 demand = { version = "1.7.2", optional = true }
 jiff = "0.2.16"
+js-sys = { version = "0.3.81", optional = true }
 libc = "0.2"
 log = { version = "0.4.28", optional = true }
 once_cell = "1.21.3"
@@ -41,14 +46,13 @@ tracing-subscriber = { version = "0.3.20", features = [
 ], optional = true }
 unicode-width = { version = "0.2.2", optional = true }
 wasm-bindgen = { version = "0.2.104", optional = true }
-js-sys = { version = "0.3.81", optional = true }
 web-sys = { version = "0.3.81", optional = true }
 
 [dev-dependencies]
 assert_fs = "1.1.3"
-divan = { version = "4.0.0", package = "codspeed-divan-compat" }
+divan = { package = "codspeed-divan-compat", version = "4.0.0" }
 insta = { version = "1.43.2", features = ["yaml"] }
-proptest = "1.9.0"
+proptest = { version = "1.9.0", default-features = false, features = ["std"] }
 rstest = "0.26.1"
 wasm-bindgen-test = { version = "0.3.54" }
 
@@ -61,11 +65,7 @@ color = ["anstream", "anstyle"]
 fancy = ["unicode-width"]
 json = ["dep:serde", "dep:serde_json"]
 prompt-demand = ["dep:demand"]
-wasm = ["dep:wasm-bindgen", "dep:js-sys", "dep:web-sys"]
-
-[[bench]]
-name = "logging"
-harness = false
+wasm = ["dep:js-sys", "dep:wasm-bindgen", "dep:web-sys"]
 
 [profile.bench]
 lto = true

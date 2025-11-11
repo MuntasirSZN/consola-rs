@@ -972,11 +972,9 @@ impl<R: Reporter + 'static> LoggerBuilder<R> {
         let mut logger = Logger::new(reporter).with_config(self.config);
 
         #[cfg(feature = "prompt-demand")]
-        let logger = if let Some(provider) = self.prompt_provider {
-            logger.with_prompt_provider(provider)
-        } else {
-            logger
-        };
+        if let Some(provider) = self.prompt_provider {
+            logger = logger.with_prompt_provider(provider);
+        }
 
         logger
         // Note: defaults would need to be stored in Logger to be used during log calls

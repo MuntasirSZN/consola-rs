@@ -16,7 +16,7 @@ retries = 1
 junit = { path = "junit.xml" }
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib"]
 
 [[bench]]
 harness = false

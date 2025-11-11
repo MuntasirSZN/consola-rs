@@ -15,6 +15,9 @@ fail-fast = false
 retries = 1
 junit = { path = "junit.xml" }
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [[bench]]
 harness = false
 name = "logging"

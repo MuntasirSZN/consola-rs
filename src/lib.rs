@@ -22,6 +22,16 @@ pub mod prompt;
 #[cfg(any(feature = "prompt-demand", feature = "wasm"))]
 pub use prompt::*;
 
+#[cfg(feature = "bridge-log")]
+pub mod bridge_log;
+#[cfg(feature = "bridge-log")]
+pub use bridge_log::*;
+
+#[cfg(feature = "bridge-tracing")]
+pub mod bridge_tracing;
+#[cfg(feature = "bridge-tracing")]
+pub use bridge_tracing::*;
+
 #[macro_use]
 pub mod macros;
 pub use macros::*;

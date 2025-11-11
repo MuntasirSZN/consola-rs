@@ -295,9 +295,9 @@ ______________________________________________________________________
 01. [ ] Document fingerprint inclusion of meta fields (toggle? ⚠).
     🧪 Tests:
 
-- [ ] log crate bridge basic.
-- [ ] tracing event field capture.
-- [ ] Recursion safety.
+- [x] log crate bridge basic.
+- [x] tracing event field capture.
+- [x] Recursion safety.
 
 ______________________________________________________________________
 

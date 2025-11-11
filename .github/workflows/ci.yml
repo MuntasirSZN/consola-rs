@@ -41,7 +41,7 @@ jobs:
           components: clippy
           bins: cargo-hack
       - name: Run clippy
-        run: cargo hack clippy --locked --optional-deps --each-feature --ignore-unknown-features -- -D warnings
+        run: cargo hack clippy --locked --optional-deps --each-feature -- -D warnings
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -89,7 +89,7 @@ jobs:
         with:
           bins: cargo-hack
       - name: Check
-        run: cargo hack check --locked --optional-deps --each-feature --ignore-unknown-features
+        run: cargo hack check --locked --optional-deps --each-feature
   docs:
     name: Documentation
     runs-on: ubuntu-latest

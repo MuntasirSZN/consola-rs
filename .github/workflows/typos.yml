@@ -1,25 +1,20 @@
 name: Spelling
-
 permissions:
   contents: read
-
 on: [pull_request]
-
 env:
   RUST_BACKTRACE: 1
   CARGO_TERM_COLOR: always
   CLICOLOR: 1
-
 concurrency:
   group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
-
 jobs:
   spelling:
     name: Spell Check with Typos
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout Actions Repository
-      uses: actions/checkout@v5
-    - name: Spell Check Repo
-      uses: crate-ci/typos@master
+      - name: Checkout Actions Repository
+        uses: actions/checkout@71cf2267d89c5cb81562390fa70a37fa40b1305e # v6-beta
+      - name: Spell Check Repo
+        uses: crate-ci/typos@07d900b8fa1097806b8adb6391b0d3e0ac2fdea7 # v1.39.0

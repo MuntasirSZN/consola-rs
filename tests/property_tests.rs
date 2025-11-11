@@ -143,11 +143,14 @@ proptest! {
             args.push(ArgValue::Bool(b));
         }
         // Use the log method instead of log_with_args
-        for arg in args {
-            logger.log("info", None, [arg]);
+        for arg in &args {
+            logger.log("info", None, [arg.clone()]);
         }
 
         let captured = logger.reporter().get_records();
-        prop_assert!(!captured.is_empty());
+        // Only assert non-empty if we had args to log
+        if !args.is_empty() {
+            prop_assert!(!captured.is_empty());
+        }
     }
 }

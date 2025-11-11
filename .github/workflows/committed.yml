@@ -18,5 +18,6 @@ jobs:
         uses: actions/checkout@71cf2267d89c5cb81562390fa70a37fa40b1305e # v6-beta
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Lint Commits
         uses: crate-ci/committed@15229711f8f597474c0b636f327cde5969f9a529 # v1.1.7

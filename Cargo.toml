@@ -10,7 +10,7 @@ license = "MIT"
 keywords = ["ansi", "console", "logging", "wasm"]
 categories = ["development-tools"]
 
-[workspace.metadata.cargo-nextest.profile.default]
+[package.metadata.cargo-nextest.profile.default]
 fail-fast = false
 retries = 1
 junit = { path = "junit.xml" }

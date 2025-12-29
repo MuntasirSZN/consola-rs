@@ -165,10 +165,11 @@ jobs:
           cargo llvm-cov report --doctests --lcov --output-path lcov.info
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/test-results-action@47f89e9acb64b76debcd5ea40642d25a4adced9f # v1.1.1
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           file: target/nextest/default/junit.xml
           token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:

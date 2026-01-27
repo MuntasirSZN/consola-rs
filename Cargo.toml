@@ -38,7 +38,7 @@ serde = { version = "1.0.228", features = ["derive"], optional = true }
 serde_json = { version = "1.0.149", optional = true }
 smallvec = { version = "1.15.1", features = ["const_new", "union"] }
 strip-ansi-escapes = "0.2.1"
-thiserror = "2.0.17"
+thiserror = "2.0.18"
 tracing = { version = "0.1.44", optional = true }
 tracing-subscriber = { version = "0.3.22", features = [
   "fmt",
@@ -49,9 +49,9 @@ wasm-bindgen = { version = "0.2.105", optional = true }
 web-sys = { version = "0.3.82", optional = true }
 
 [dev-dependencies]
-insta = { version = "1.46.0", features = ["yaml"] }
+insta = { version = "1.46.1", features = ["yaml"] }
 rstest = "0.26.1"
-wasm-bindgen-test = { version = "0.3.56" }
+wasm-bindgen-test = { version = "0.3.58" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 assert_fs = "1.1.3"

@@ -23,7 +23,7 @@ harness = false
 name = "logging"
 
 [dependencies]
-anstream = { version = "0.6.21", optional = true }
+anstream = { version = "1.0.0", optional = true }
 anstyle = { version = "1.0.13", optional = true }
 anyhow = "1.0.101"
 blake3 = "1.8.3"

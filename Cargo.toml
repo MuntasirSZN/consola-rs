@@ -51,7 +51,7 @@ web-sys = { version = "0.3.82", optional = true }
 [dev-dependencies]
 insta = { version = "1.46.3", features = ["yaml"] }
 rstest = "0.26.1"
-wasm-bindgen-test = { version = "0.3.58" }
+wasm-bindgen-test = { version = "0.3.64" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 assert_fs = "1.1.3"

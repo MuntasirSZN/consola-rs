@@ -60,7 +60,7 @@ proptest = "1.11.0"
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 getrandom = { version = "0.4", default-features = false, features = ["wasm_js"] }
-uuid = { version = "1.23.0", features = ["js"] }
+uuid = { version = "1.23.1", features = ["js"] }
 
 [features]
 default = ["color", "fancy"]

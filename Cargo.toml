@@ -27,7 +27,7 @@ anstream = { version = "1.0.0", optional = true }
 anstyle = { version = "1.0.14", optional = true }
 anyhow = "1.0.102"
 blake3 = "1.8.5"
-demand = { version = "2.0.1", optional = true }
+demand = { version = "2.0.2", optional = true }
 jiff = "0.2.24"
 js-sys = { version = "0.3.82", optional = true }
 libc = "0.2"

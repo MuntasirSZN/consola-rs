@@ -15,68 +15,12 @@ fail-fast = false
 retries = 1
 junit = { path = "junit.xml" }
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
-[[bench]]
-harness = false
-name = "logging"
-
 [dependencies]
-anstream = { version = "1.0.0", optional = true }
-anstyle = { version = "1.0.14", optional = true }
-anyhow = "1.0.102"
-blake3 = "1.8.5"
-demand = { version = "2.0.2", optional = true }
-jiff = "0.2.27"
-js-sys = { version = "0.3.82", optional = true }
-libc = "0.2"
-log = { version = "0.4.30", optional = true }
-once_cell = "1.21.4"
-parking_lot = "0.12.5"
-serde = { version = "1.0.228", features = ["derive"], optional = true }
-serde_json = { version = "1.0.150", optional = true }
-smallvec = { version = "1.15.1", features = ["const_new", "union"] }
-strip-ansi-escapes = "0.2.1"
-thiserror = "2.0.18"
-tracing = { version = "0.1.44", optional = true }
-tracing-subscriber = { version = "0.3.23", features = [
-  "fmt",
-  "registry",
-], optional = true }
-unicode-width = { version = "0.2.2", optional = true }
-wasm-bindgen = { version = "0.2.105", optional = true }
-web-sys = { version = "0.3.82", optional = true }
 
 [dev-dependencies]
-insta = { version = "1.47.2", features = ["yaml"] }
-rstest = "0.26.1"
-wasm-bindgen-test = { version = "0.3.65" }
-
-[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-assert_fs = "1.1.4"
-divan = { package = "codspeed-divan-compat", version = "4.1.0" }
-proptest = "1.11.0"
-
-[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-getrandom = { version = "0.4", default-features = false, features = ["wasm_js"] }
-uuid = { version = "1.23.1", features = ["js"] }
 
 [features]
-default = ["color", "fancy"]
-async-reporters = []  # placeholder (post-MVP)
-bridge-log = ["dep:log"]
-bridge-tracing = ["dep:tracing", "dep:tracing-subscriber"]
-color = ["anstream", "anstyle"]
-fancy = ["unicode-width"]
-json = ["dep:serde", "dep:serde_json"]
-prompt-demand = ["dep:demand"]
-wasm = ["dep:js-sys", "dep:wasm-bindgen", "dep:web-sys"]
 
 [profile.bench]
-lto = true
-codegen-units = 1
-
-[profile.release]
 lto = true
 codegen-units = 1

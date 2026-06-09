@@ -1,9 +1,0 @@
----
-source: tests/snapshot_tests.rs
-expression: comparison
----
-=== Formatted Output ===
-[info] Test message
-
-=== Raw Output ===
-[info] Test message

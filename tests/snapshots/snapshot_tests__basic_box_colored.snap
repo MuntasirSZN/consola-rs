@@ -1,5 +1,0 @@
----
-source: tests/snapshot_tests.rs
-expression: colored
----
-[36;1m[box][0m Box content:

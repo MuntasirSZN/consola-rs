@@ -1,5 +1,0 @@
----
-source: tests/snapshot_tests.rs
-expression: plain
----
-⚠  WARN  Repeated warning  (x5)

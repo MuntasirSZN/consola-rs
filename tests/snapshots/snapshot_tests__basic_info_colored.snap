@@ -1,5 +1,0 @@
----
-source: tests/snapshot_tests.rs
-expression: colored
----
-[36;1m[info][0m Simple log message

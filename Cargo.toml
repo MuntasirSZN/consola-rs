@@ -16,10 +16,44 @@ retries = 1
 junit = { path = "junit.xml" }
 
 [dependencies]
-
-[dev-dependencies]
+parking_lot = "0.12"
+anstyle = "1"
+unicode-width = "0.2"
+jiff = { version = "0.2", optional = true }
+chrono = { version = "0.4", optional = true }
+log = { version = "0.4", optional = true }
+tracing = { version = "0.1", optional = true }
+web-sys = { version = "0.3", optional = true, features = ["console"] }
+wasm-bindgen = { version = "0.2", optional = true }
+demand = { version = "2", optional = true }
 
 [features]
+default = ["jiff"]
+jiff = ["dep:jiff"]
+chrono = ["dep:chrono"]
+log = ["dep:log"]
+tracing = ["dep:tracing"]
+wasm = ["dep:web-sys", "dep:wasm-bindgen"]
+prompt = ["dep:demand"]
+
+[[example]]
+name = "basic"
+path = "examples/basic.rs"
+
+[[example]]
+name = "custom_reporter"
+path = "examples/custom_reporter.rs"
+
+[[example]]
+name = "formats"
+path = "examples/formats.rs"
+
+[dev-dependencies]
+divan = { version = "4", package = "codspeed-divan-compat" }
+
+[[bench]]
+name = "log_bench"
+harness = false
 
 [profile.bench]
 lto = true

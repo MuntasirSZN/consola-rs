@@ -49,9 +49,9 @@ jobs:
         uses: moonrepo/setup-rust@abb2d32350334249b178c401e5ec5836e0cd88d3 # v1.3.0
         with:
           components: clippy
-          bins: cargo-hack
+          bins: cargo-hack,just
       - name: Run clippy
-        run: cargo hack clippy --locked --optional-deps --each-feature -- -D warnings
+        run: just lint-features
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -115,9 +115,9 @@ jobs:
       - name: Setup Rust
         uses: moonrepo/setup-rust@abb2d32350334249b178c401e5ec5836e0cd88d3 # v1.3.0
         with:
-          bins: cargo-hack
+          bins: cargo-hack,just
       - name: Check
-        run: cargo hack check --locked --optional-deps --each-feature
+        run: just check-features
   docs:
     name: Documentation
     runs-on: ubuntu-latest
@@ -130,12 +130,10 @@ jobs:
           persist-credentials: false
       - name: Setup Rust
         uses: moonrepo/setup-rust@abb2d32350334249b178c401e5ec5836e0cd88d3 # v1.3.0
-      - name: Build documentation (no features)
-        run: cargo doc --no-deps --no-default-features --locked
-      - name: Build documentation (default features)
-        run: cargo doc --no-deps --locked
-      - name: Build documentation (all features)
-        run: cargo doc --no-deps --all-features --locked
+        with:
+          bins: just
+      - name: Build documentation
+        run: just docs-ci
   audit:
     name: Security Audit
     runs-on: ubuntu-latest
@@ -165,10 +163,7 @@ jobs:
           cache-target: test
           bins: just,cargo-nextest,cargo-llvm-cov
       - name: Generate coverage
-        run: |
-          cargo llvm-cov --all-features --no-report nextest
-          cargo llvm-cov --all-features --no-report --doc
-          cargo llvm-cov report --doctests --lcov --output-path lcov.info
+        run: just coverage-ci
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0

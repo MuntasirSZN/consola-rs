@@ -257,6 +257,7 @@ dependencies = [
  "jiff",
  "log",
  "parking_lot",
+ "serde_json",
  "terminal_size",
  "tracing",
  "unicode-width",

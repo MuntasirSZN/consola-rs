@@ -1,6 +1,6 @@
 # justfile for changelogen-rs development
 
-tools := "cargo-nextest cargo-deny cargo-audit cargo-llvm-cov cargo-watch cargo-codspeed cargo-insta"
+tools := "cargo-nextest cargo-deny cargo-audit cargo-llvm-cov cargo-watch cargo-hack"
 
 # Commands
 
@@ -26,6 +26,10 @@ fmt-check:
 lint:
     {{ clippy }} -- -D warnings
 
+# Run clippy linter (per-feature with cargo-hack)
+lint-features:
+    cargo hack clippy --locked --optional-deps --each-feature -- -D warnings
+
 # Run clippy linter and autofix
 lint-fix:
     {{ clippy }} --fix -- -D warnings
@@ -38,6 +42,10 @@ build:
 build-release:
     {{ build }} --release
 
+# Check compilation per-feature with cargo-hack
+check-features:
+    cargo hack check --locked --optional-deps --each-feature
+
 # Run tests with nextest
 test:
     {{ nextest }}
@@ -47,14 +55,27 @@ test:
 test-fast:
     {{ nextest }}
 
-# Run benchmarks (uses CodSpeed)
-bench:
+# Build benchmarks for CodSpeed CI
+bench-build:
     cargo codspeed build
+
+# Run benchmarks for CodSpeed CI
+bench-ci: bench-build
     cargo codspeed run
+
+# Run benchmarks locally
+bench:
+    cargo bench
 
 # Generate documentation
 doc:
     cargo doc --all --no-deps --open
+
+# Generate documentation (CI variant, no open)
+docs-ci:
+    cargo doc --no-deps --no-default-features --locked
+    cargo doc --no-deps --locked
+    cargo doc --no-deps --all-features --locked
 
 # Run all checks (format, lint, test)
 check: fmt-check lint test
@@ -91,6 +112,12 @@ clean:
 coverage:
     {{ coverage }}
 
+# Generate coverage report (CI variant: nextest + doctest + lcov)
+coverage-ci:
+    cargo llvm-cov --all-features --no-report nextest
+    cargo llvm-cov --all-features --no-report --doc
+    cargo llvm-cov report --doctests --lcov --output-path lcov.info
+
 # Generate HTML coverage report and open in browser
 coverage-html:
     {{ coverage }} --html --open
@@ -103,6 +130,13 @@ coverage-lcov:
 # Clean coverage data
 coverage-clean:
     cargo llvm-cov clean
+
+# Publish to crates.io (uses CARGO_REGISTRY_TOKEN env)
+publish:
+    cargo publish
+
+# Run all CI checks (format, lint per-feature, build, test, docs, audit)
+ci-check: fmt-check lint-features build test docs-ci deny
 
 # Watch for changes and run tests
 watch:

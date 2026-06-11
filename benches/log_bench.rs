@@ -32,6 +32,7 @@ fn make_log_obj(ty: LogType, args: &[&str], tag: &str) -> LogObject {
         badge: false,
         icon: None,
         style: None,
+        error: None,
     }
 }
 

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>consola-rs browser example</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; }
+    pre { background: #f5f5f5; border-radius: 6px; padding: 1rem; overflow-x: auto; font-size: .875rem; }
+    code { font-size: .875rem; }
+    h1 { font-size: 1.5rem; }
+  </style>
+</head>
+<body>
+  <h1>consola-rs &mdash; WASM example</h1>
+  <p>
+    Open your browser's developer console (<kbd>F12</kbd>) to see styled
+    console output produced by <code>BrowserReporter</code>.
+    Each message uses <code>console.log</code>, <code>console.warn</code>,
+    or <code>console.error</code> with a CSS-styled badge.
+  </p>
+
+  <h2>Build &amp; serve</h2>
+  <pre>
+# From the repository root:
+cd examples/wasm
+
+# Build with wasm-pack
+wasm-pack build --target web --release
+
+# Serve this directory
+python3 -m http.server 8080
+# or: npx serve .
+
+# Open http://localhost:8080 in your browser
+  </pre>
+
+  <script type="module">
+    import init from './pkg/consola_wasm_example.js';
+    await init();
+  </script>
+</body>
+</html>

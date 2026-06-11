@@ -6,7 +6,7 @@
 
 /// Plain-text reporter that formats log messages without colors or icons.
 pub mod basic;
-/// Browser console reporter using web-sys bindings for WASM targets.
+/// Browser console reporter with runtime browser detection.
 pub mod browser;
 /// Fancy reporter with colors, icons, and rich formatting for terminal output.
 pub mod fancy;

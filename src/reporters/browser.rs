@@ -1,21 +1,45 @@
-//! Reporter for browser console environments via `web-sys` bindings.
+//! Reporter for browser console environments.
 //!
-//! On WASM targets with the `wasm` feature, this reporter emits styled log
-//! messages directly to the browser developer console. On other targets it
-//! falls back to a string-based format for testing and display.
+//! Uses runtime detection: when the `browser` feature is enabled and
+//! `web_sys::window()` returns `Some` (i.e. running in a browser),
+//! messages are printed with styled badges matching consola-js output.
+//! Otherwise, falls back to plain text formatting.
 
 use crate::constants::{LogLevel, LogType};
 use crate::types::{FormatOptions, LogContext, LogObject, Reporter};
 
-/// Reporter for browser console environments via web-sys.
+/// Runtime browser detection: returns `true` when the current environment is
+/// a browser with a DOM `window` object. This works on `wasm32` targets
+/// compiled with the `browser` feature, and gracefully returns `false` on
+/// native targets or non-browser WASM environments (e.g. Node.js WASM).
+fn is_browser() -> bool {
+    #[cfg(all(target_arch = "wasm32", feature = "browser"))]
+    {
+        // web_sys::window() returns None when not in a browser (e.g. Node.js WASM)
+        web_sys::window().is_some()
+    }
+    #[cfg(not(all(target_arch = "wasm32", feature = "browser")))]
+    {
+        false
+    }
+}
+
+/// Reporter for browser console environments.
+///
+/// When `browser` feature is enabled and the environment is detected as a
+/// browser, uses `console.log`/`console.warn`/`console.error` with styled
+/// badges. Otherwise produces plain text formatted output.
 #[derive(Debug, Clone)]
 pub struct BrowserReporter {
     /// Default CSS color used when no level or type color matches.
     pub default_color: String,
     /// Per-log-level CSS colors used when no type-specific color is found.
-    pub level_colors: [(LogLevel, String); 4],
+    /// Keyed by log level number (0=error, 1=warn, 3=info).
+    pub level_colors: [(LogLevel, String); 3],
     /// Per-type CSS colors, checked before falling back to `level_colors`.
     pub type_colors: Vec<(String, String)>,
+    /// Whether the environment was detected as a browser.
+    pub browser: bool,
 }
 
 impl Default for BrowserReporter {
@@ -33,14 +57,82 @@ impl BrowserReporter {
                 (0, "#c0392b".into()),
                 (1, "#f39c12".into()),
                 (3, "#00BCD4".into()),
-                (999, String::new()),
             ],
             type_colors: vec![("success".into(), "#2ecc71".into())],
+            browser: is_browser(),
         }
     }
 
-    fn fmt_log(&self, log_obj: &LogObject) -> (String, String) {
-        // Returns (badge, message_text)
+    /// Find the CSS color for a given log object, matching JS logic:
+    /// 1. typeColorMap[logObj.type] (type-specific)
+    /// 2. levelColorMap[logObj.level] (level-based)
+    /// 3. defaultColor
+    #[allow(dead_code)]
+    fn color_for(&self, log_obj: &LogObject) -> &str {
+        let type_name = log_obj.r#type.as_str();
+        for (name, color) in &self.type_colors {
+            if name == type_name {
+                return color;
+            }
+        }
+        for (level, color) in &self.level_colors {
+            if *level == log_obj.level {
+                return color;
+            }
+        }
+        &self.default_color
+    }
+
+    /// Get the appropriate console function for the log level.
+    #[cfg(all(target_arch = "wasm32", feature = "browser"))]
+    fn console_fn_with_style(level: LogLevel, formatted: &str, style: &str) {
+        let args = wasm_bindgen::JsValue::from_str(formatted);
+        let style_val = wasm_bindgen::JsValue::from_str(style);
+        let empty = wasm_bindgen::JsValue::from_str("");
+        if level < 1 {
+            web_sys::console::error_3(&args, &style_val, &empty);
+        } else if level == 1 {
+            web_sys::console::warn_3(&args, &style_val, &empty);
+        } else {
+            web_sys::console::log_3(&args, &style_val, &empty);
+        }
+    }
+
+    /// Get the appropriate console function for plain (unstyled) output.
+    #[cfg(all(target_arch = "wasm32", feature = "browser"))]
+    fn console_fn_plain(level: LogLevel, msg: &str) {
+        let args = wasm_bindgen::JsValue::from_str(msg);
+        if level < 1 {
+            web_sys::console::error_1(&args);
+        } else if level == 1 {
+            web_sys::console::warn_1(&args);
+        } else {
+            web_sys::console::log_1(&args);
+        }
+    }
+
+    /// Emit a styled badge + message to the browser console.
+    #[cfg(all(target_arch = "wasm32", feature = "browser"))]
+    fn emit_browser_styled(&self, log_obj: &LogObject) {
+        let badge_text = self.badge_text(log_obj);
+        let msg = log_obj.args.join(" ");
+
+        if badge_text.is_empty() {
+            Self::console_fn_plain(log_obj.level, &msg);
+        } else {
+            Self::console_fn_with_style(
+                log_obj.level,
+                &format!("%c[{}]%c {}", badge_text, msg),
+                &format!(
+                    "background: {}; border-radius: 0.5em; color: white; font-weight: bold; padding: 2px 0.5em;",
+                    self.color_for(log_obj),
+                ),
+            );
+        }
+    }
+
+    /// Build the badge text (tag:type) matching consola-js.
+    fn badge_text(&self, log_obj: &LogObject) -> String {
         let type_str = if log_obj.r#type == LogType::Log {
             String::new()
         } else {
@@ -48,19 +140,17 @@ impl BrowserReporter {
         };
         let tag = log_obj.tag.clone();
 
-        let badge_str = if tag.is_empty() && type_str.is_empty() {
-            String::new()
-        } else {
-            [tag.as_str(), type_str.as_str()]
-                .iter()
-                .filter(|s| !s.is_empty())
-                .copied()
-                .collect::<Vec<_>>()
-                .join(":")
-        };
+        [tag, type_str]
+            .into_iter()
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>()
+            .join(":")
+    }
 
+    fn fmt_log(&self, log_obj: &LogObject) -> (String, String) {
+        let badge = self.badge_text(log_obj);
         let msg = log_obj.args.join(" ");
-        (badge_str, msg)
+        (badge, msg)
     }
 
     fn format_log_obj(&self, log_obj: &LogObject, _opts: &FormatOptions) -> String {
@@ -71,63 +161,19 @@ impl BrowserReporter {
             format!("[{}] {}", badge, msg)
         }
     }
-
-    /// Emit to the browser console using web-sys bindings.
-    #[cfg(all(target_arch = "wasm32", feature = "wasm"))]
-    fn emit_browser(&self, log_obj: &LogObject, badge: &str, msg: &str) {
-        use wasm_bindgen::JsValue;
-        let console = web_sys::console;
-
-        let color = self.color_for(log_obj);
-        let style = format!(
-            "background: {}; border-radius: 0.5em; color: white; font-weight: bold; padding: 2px 0.5em;",
-            color
-        );
-
-        let console_fn: &dyn Fn(&JsValue) = if log_obj.level < 1 {
-            &|v| console::error_1(v)
-        } else if log_obj.level == 1 {
-            &|v| console::warn_1(v)
-        } else {
-            &|v| console::log_1(v)
-        };
-
-        if badge.is_empty() {
-            console_fn(&JsValue::from_str(msg));
-        } else {
-            console_fn(&JsValue::from_str(&format!("%c{} %c{}", badge, msg)));
-            // In real browser this would use console.log with multiple %c arguments,
-            // but web-sys' variadic console methods are complex to wire up for multiple
-            // format specifiers. We output a simplified version.
-        }
-    }
-
-    /// On WASM without `wasm` feature: error at compile/runtime.
-    #[cfg(all(target_arch = "wasm32", not(feature = "wasm")))]
-    fn emit_browser(&self, _log_obj: &LogObject, _badge: &str, _msg: &str) -> Result<(), String> {
-        Err("BrowserReporter requires the `wasm` feature on WASM targets".into())
-    }
 }
 
 impl Reporter for BrowserReporter {
     fn format(&self, log_obj: &LogObject, ctx: &LogContext) -> Result<String, String> {
-        #[cfg(all(target_arch = "wasm32", feature = "wasm"))]
-        {
-            let (badge, msg) = self.fmt_log(log_obj);
-            self.emit_browser(log_obj, &badge, &msg);
-            // Return empty formatted string since we already emitted
+        // In browser: emit styled output, return empty string (already emitted)
+        #[cfg(all(target_arch = "wasm32", feature = "browser"))]
+        if self.browser {
+            self.emit_browser_styled(log_obj);
             return Ok(String::new());
         }
 
-        #[cfg(all(target_arch = "wasm32", not(feature = "wasm")))]
-        {
-            return Err("BrowserReporter requires the `wasm` feature on WASM targets".into());
-        }
-
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            Ok(self.format_log_obj(log_obj, &ctx.options.format_options))
-        }
+        // Fallback: text formatting (native or non-browser wasm)
+        Ok(self.format_log_obj(log_obj, &ctx.options.format_options))
     }
 
     fn clone_box(&self) -> Box<dyn Reporter> {
@@ -161,6 +207,7 @@ mod tests {
             badge: false,
             icon: None,
             style: None,
+            error: None,
         }
     }
 
@@ -169,7 +216,7 @@ mod tests {
         let r = BrowserReporter::new();
         let d = BrowserReporter::default();
         assert_eq!(r.default_color, d.default_color);
-        assert_eq!(r.level_colors.len(), 4);
+        assert_eq!(r.level_colors.len(), 3);
         assert_eq!(r.type_colors.len(), 1);
     }
 
@@ -177,7 +224,6 @@ mod tests {
     fn test_format_plain_message() {
         let r = BrowserReporter::new();
         let ctx = make_ctx();
-        // LogType::Log has no type_str, no tag -> no badge
         let obj = make_log_obj(LogType::Log, &["hello", "world"], "", 2);
         let result = r.format(&obj, &ctx).unwrap();
         assert_eq!(result, "hello world");
@@ -187,7 +233,6 @@ mod tests {
     fn test_format_with_type_tag_badge() {
         let r = BrowserReporter::new();
         let ctx = make_ctx();
-        // Info type with tag -> badge "tag:info"
         let obj = make_log_obj(LogType::Info, &["hello"], "mytag", 3);
         let result = r.format(&obj, &ctx).unwrap();
         assert_eq!(result, "[mytag:info] hello");
@@ -197,7 +242,6 @@ mod tests {
     fn test_format_with_type_only() {
         let r = BrowserReporter::new();
         let ctx = make_ctx();
-        // Info type, no tag -> badge "info"
         let obj = make_log_obj(LogType::Info, &["hello"], "", 3);
         let result = r.format(&obj, &ctx).unwrap();
         assert_eq!(result, "[info] hello");
@@ -207,7 +251,6 @@ mod tests {
     fn test_format_with_tag_only() {
         let r = BrowserReporter::new();
         let ctx = make_ctx();
-        // Log type with tag -> badge just "tag" (type_str is empty for Log)
         let obj = make_log_obj(LogType::Log, &["hello"], "mytag", 2);
         let result = r.format(&obj, &ctx).unwrap();
         assert_eq!(result, "[mytag] hello");
@@ -250,10 +293,58 @@ mod tests {
         assert_eq!(r.level_colors[0], (0, "#c0392b".to_string()));
         assert_eq!(r.level_colors[1], (1, "#f39c12".to_string()));
         assert_eq!(r.level_colors[2], (3, "#00BCD4".to_string()));
-        assert_eq!(r.level_colors[3], (999, String::new()));
         assert_eq!(
             r.type_colors[0],
             ("success".to_string(), "#2ecc71".to_string())
         );
+    }
+
+    #[test]
+    fn test_color_for_type_specific() {
+        let r = BrowserReporter::new();
+        let mut obj = make_log_obj(LogType::Success, &["test"], "", 3);
+        assert_eq!(r.color_for(&obj), "#2ecc71");
+        obj.r#type = LogType::Info;
+        assert_eq!(r.color_for(&obj), "#00BCD4");
+    }
+
+    #[test]
+    fn test_color_for_level_based() {
+        let r = BrowserReporter::new();
+        let obj = make_log_obj(LogType::Log, &["test"], "", 0);
+        assert_eq!(r.color_for(&obj), "#c0392b");
+
+        let obj = make_log_obj(LogType::Log, &["test"], "", 1);
+        assert_eq!(r.color_for(&obj), "#f39c12");
+    }
+
+    #[test]
+    fn test_color_for_default() {
+        let r = BrowserReporter::new();
+        let obj = make_log_obj(LogType::Log, &["test"], "", 999);
+        assert_eq!(r.color_for(&obj), "#7f8c8d");
+    }
+
+    #[test]
+    fn test_badge_text() {
+        let r = BrowserReporter::new();
+        let obj = make_log_obj(LogType::Info, &["msg"], "tag", 3);
+        assert_eq!(r.badge_text(&obj), "tag:info");
+
+        let obj = make_log_obj(LogType::Info, &["msg"], "", 3);
+        assert_eq!(r.badge_text(&obj), "info");
+
+        let obj = make_log_obj(LogType::Log, &["msg"], "", 2);
+        assert_eq!(r.badge_text(&obj), "");
+
+        let obj = make_log_obj(LogType::Log, &["msg"], "tag", 2);
+        assert_eq!(r.badge_text(&obj), "tag");
+    }
+
+    #[test]
+    fn test_is_browser_on_native() {
+        // Always false on native targets
+        #[cfg(not(all(target_arch = "wasm32", feature = "browser")))]
+        assert!(!is_browser());
     }
 }

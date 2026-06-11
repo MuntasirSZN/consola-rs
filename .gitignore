@@ -1,1 +1,3 @@
 /target
+/examples/wasm/target
+/examples/wasm/pkg

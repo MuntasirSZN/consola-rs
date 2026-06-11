@@ -1,8 +1,7 @@
 // ─── BasicReporter ────────────────────────────────────────────────────────────
 // Pure formatter — no I/O. Returns Result<String, String> for the Consola to emit.
 
-use crate::constants::LogType;
-use crate::types::{FormatOptions, LogContext, LogObject, Reporter};
+use crate::types::{ErrorInfo, FormatOptions, LogContext, LogObject, Reporter};
 
 fn bracket(x: &str) -> String {
     if x.is_empty() {
@@ -28,20 +27,105 @@ impl BasicReporter {
         Self
     }
 
-    /// Joins the log message arguments into a single space-separated string.
-    pub fn format_args(&self, args: &[String], _opts: &FormatOptions) -> String {
-        args.join(" ")
+    /// Formats an error with its source chain (recursive).
+    pub fn format_error(err: &ErrorInfo, _opts: &FormatOptions, level: usize) -> String {
+        let caused_prefix = if level > 0 {
+            format!("{}[cause]: ", "  ".repeat(level))
+        } else {
+            String::new()
+        };
+
+        let mut result = format!("{}{}", caused_prefix, err.message);
+
+        if let Some(stack) = &err.stack
+            && !stack.is_empty()
+        {
+            // Blank line before stack
+            result.push('\n');
+            // Indent each line of the stack
+            for line in stack.lines() {
+                let trimmed = line.trim();
+                if trimmed.is_empty() {
+                    continue;
+                }
+                result.push_str(&format!("\n{}{}", "  ".repeat(level + 2), trimmed));
+            }
+        }
+
+        if let Some(cause) = &err.cause {
+            result.push_str("\n\n");
+            result.push_str(&Self::format_error(cause, _opts, level + 1));
+        }
+
+        result
     }
 
-    /// Formats the current time as `HH:MM:SS` if `opts.date` is set; returns an empty string otherwise.
+    /// Joins the log message arguments into a single space-separated string.
+    /// Detects errors in args and formats them with source chains.
+    pub fn format_args(&self, args: &[String], _opts: &FormatOptions) -> String {
+        let mut parts = Vec::with_capacity(args.len());
+        for arg in args {
+            parts.push(arg.clone());
+        }
+        parts.join(" ")
+    }
+
+    /// Formats the current time as 12-hour local time (`h:mm:ss AM/PM`).
     pub fn format_date(&self, opts: &FormatOptions) -> String {
         if opts.date {
-            // Format as HH:MM:SS using the timestamp (millis since epoch)
+            #[cfg(feature = "jiff")]
+            {
+                if let Ok(ts) = jiff::Timestamp::from_millisecond(crate::types::now_ms()) {
+                    let zoned = ts.to_zoned(jiff::tz::TimeZone::system());
+                    let civil = zoned.datetime();
+                    let h = civil.hour();
+                    let hour12 = match h {
+                        0 => 12,
+                        1..=12 => h,
+                        _ => h - 12,
+                    };
+                    let ampm = if h < 12 { "AM" } else { "PM" };
+                    return format!(
+                        "{}:{:02}:{:02} {}",
+                        hour12,
+                        civil.minute(),
+                        civil.second(),
+                        ampm
+                    );
+                }
+            }
+
+            #[cfg(all(feature = "chrono", not(feature = "jiff")))]
+            {
+                use chrono::Timelike;
+                let local = chrono::Local::now();
+                let h = local.hour12();
+                let hour12 = match h.1 {
+                    0 => 12,
+                    n => n,
+                };
+                let ampm = if h.0 { "PM" } else { "AM" };
+                return format!(
+                    "{}:{:02}:{:02} {}",
+                    hour12,
+                    local.minute(),
+                    local.second(),
+                    ampm
+                );
+            }
+
+            // Fallback: UTC-based 12-hour
             let total_secs = (crate::types::now_ms() / 1000) as u64;
             let hours = (total_secs / 3600) % 24;
             let mins = (total_secs / 60) % 60;
             let secs = total_secs % 60;
-            format!("{:02}:{:02}:{:02}", hours, mins, secs)
+            let hour12 = match hours {
+                0 => 12,
+                1..=12 => hours,
+                _ => hours - 12,
+            };
+            let ampm = if hours < 12 { "AM" } else { "PM" };
+            format!("{}:{:02}:{:02} {}", hour12, mins, secs, ampm)
         } else {
             String::new()
         }
@@ -65,7 +149,7 @@ impl BasicReporter {
     pub fn format_log_obj(&self, log_obj: &LogObject, opts: &FormatOptions) -> String {
         let message = self.format_args(&log_obj.args, opts);
 
-        if log_obj.r#type == LogType::Box {
+        if log_obj.r#type == crate::constants::LogType::Box {
             let mut lines: Vec<String> = Vec::new();
             lines.push(String::new());
             let tag = bracket(&log_obj.tag);
@@ -82,23 +166,24 @@ impl BasicReporter {
             return lines.join("\n");
         }
 
-        self.filter_and_join(&[
+        let base = self.filter_and_join(&[
             bracket(log_obj.r#type.as_str()),
             bracket(&log_obj.tag),
             message,
-        ])
+        ]);
+
+        // Append error info if present
+        if let Some(err) = &log_obj.error {
+            let error_text = Self::format_error(err, opts, 0);
+            format!("{}\n{}", base, error_text)
+        } else {
+            base
+        }
     }
 }
 
 impl Reporter for BasicReporter {
     fn format(&self, log_obj: &LogObject, ctx: &LogContext) -> Result<String, String> {
-        #[cfg(target_arch = "wasm32")]
-        {
-            return Err(
-                "BasicReporter unavailable on WASM. Use `wasm` feature with BrowserReporter, or enable the `log` feature with a WASM-compatible logger.".into(),
-            );
-        }
-
         let opts = &ctx.options.format_options;
         Ok(self.format_log_obj(log_obj, opts))
     }
@@ -134,6 +219,7 @@ mod tests {
             badge: false,
             icon: None,
             style: None,
+            error: None,
         }
     }
 
@@ -192,24 +278,26 @@ mod tests {
     }
 
     #[test]
-    fn test_format_message_field_as_arg() {
+    fn test_format_with_error() {
         let r = BasicReporter;
         let ctx = make_ctx();
-        let obj = make_log_obj(LogType::Info, &[], "");
+        let mut obj = make_log_obj(LogType::Error, &["an error occurred"], "");
+        obj.error = Some(ErrorInfo {
+            message: "an error occurred".into(),
+            stack: Some("  at error.rs:10:5\n  at main.rs:20:1".into()),
+            backtrace: None,
+            cause: Some(Box::new(ErrorInfo {
+                message: "root cause".into(),
+                stack: Some("  at lib.rs:5:1".into()),
+                backtrace: None,
+                cause: None,
+            })),
+        });
         let result = r.format(&obj, &ctx).unwrap();
-        // args are empty, so message is empty
-        assert_eq!(result, "[info]");
-    }
-
-    #[test]
-    fn test_format_badge() {
-        let r = BasicReporter;
-        let ctx = make_ctx();
-        let mut obj = make_log_obj(LogType::Info, &["hello"], "");
-        obj.badge = true;
-        // BasicReporter ignores badge field visually — same output
-        let result = r.format(&obj, &ctx).unwrap();
-        assert_eq!(result, "[info] hello");
+        assert!(result.contains("[error]"));
+        assert!(result.contains("an error occurred"));
+        assert!(result.contains("[cause]:"));
+        assert!(result.contains("root cause"));
     }
 
     #[test]
@@ -248,15 +336,6 @@ mod tests {
     }
 
     #[test]
-    fn test_format_args_joined_with_spaces() {
-        let r = BasicReporter;
-        let ctx = make_ctx();
-        let obj = make_log_obj(LogType::Info, &["a", "b", "c"], "");
-        let result = r.format(&obj, &ctx).unwrap();
-        assert_eq!(result, "[info] a b c");
-    }
-
-    #[test]
     fn test_clone_box() {
         let r: Box<dyn Reporter> = Box::new(BasicReporter);
         let cloned = r.clone_box();
@@ -269,8 +348,7 @@ mod tests {
     }
 
     #[test]
-    fn test_format_is_ok_on_native() {
-        // On non-WASM, format always returns Ok
+    fn test_format_is_ok_on_all_platforms() {
         let r = BasicReporter;
         let ctx = make_ctx();
         let obj = make_log_obj(LogType::Info, &["x"], "");

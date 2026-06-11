@@ -24,13 +24,46 @@ pub struct FormatOptions {
 impl Default for FormatOptions {
     fn default() -> Self {
         Self {
-            columns: None,
+            columns: terminal_width(),
             date: true,
             colors: false,
             compact: true,
             error_level: 0,
         }
     }
+}
+
+/// Attempt to detect terminal width at runtime.
+/// Returns `None` when not connected to a terminal.
+pub fn terminal_width() -> Option<u16> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use std::io::IsTerminal;
+        if std::io::stdout().is_terminal() {
+            terminal_size::terminal_size().map(|(width, _)| width.0)
+        } else {
+            None
+        }
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        None
+    }
+}
+
+// ─── Error info ────────────────────────────────────────────────────────────────
+
+/// Information about an error for rich error-chain formatting.
+#[derive(Debug, Clone, Default)]
+pub struct ErrorInfo {
+    /// The error message.
+    pub message: String,
+    /// Optional stack trace as a string.
+    pub stack: Option<String>,
+    /// Optional captured backtrace (populated when `backtrace` feature is enabled).
+    pub backtrace: Option<String>,
+    /// The cause of this error (next in the chain).
+    pub cause: Option<Box<ErrorInfo>>,
 }
 
 // ─── Log object input (partial, for defaults / user-provided) ─────────────────
@@ -62,6 +95,8 @@ pub struct LogObjectInput {
     pub icon: Option<String>,
     /// Optional CSS-like style string (reporter-specific).
     pub style: Option<String>,
+    /// Optional error information for error-level logs.
+    pub error: Option<ErrorInfo>,
 }
 
 impl LogObjectInput {
@@ -144,6 +179,8 @@ pub struct LogObject {
     pub icon: Option<String>,
     /// Optional CSS-like style string (reporter-specific).
     pub style: Option<String>,
+    /// Optional error information for error-level logs.
+    pub error: Option<ErrorInfo>,
 }
 
 impl LogObject {
@@ -165,6 +202,7 @@ impl LogObject {
             badge: false,
             icon: None,
             style: None,
+            error: None,
         }
     }
 

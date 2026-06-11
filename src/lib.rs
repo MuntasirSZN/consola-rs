@@ -4,9 +4,10 @@
 //! Features:
 //!   - `jiff` (default): timestamps via jiff
 //!   - `chrono`: timestamps via chrono
-//!   - `log`: emit via `log` crate
-//!   - `tracing`: emit via `tracing` crate
-//!   - `wasm`: WASM console via web-sys
+//!   - `log`: implement `log::Log` trait (receive from `log` crate)
+//!   - `tracing`: implement `tracing::Subscriber` (receive from `tracing` crate)
+//!   - `backtrace` (default): error backtrace capture via `backtrace` crate
+//!   - `browser`: browser console styling via `web-sys` (runtime detection)
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 
@@ -123,10 +124,10 @@ pub mod prompt {
     /// Prompt the user for free-form text input.
     pub fn text(message: &str, opts: &TextPromptOptions) -> Result<String, String> {
         let mut input = Input::new(message);
-        if let Some(ref placeholder) = opts.placeholder {
+        if let Some(placeholder) = &opts.placeholder {
             input = input.placeholder(placeholder);
         }
-        if let Some(ref default) = opts.default {
+        if let Some(default) = &opts.default {
             input = input.default_value(default);
         }
         input.run().map_err(map_io_error)
@@ -171,7 +172,7 @@ pub mod prompt {
             .iter()
             .map(|opt| {
                 let mut d = demand::DemandOption::with_label(&opt.label, opt.value.clone());
-                if let Some(ref hint) = opt.hint {
+                if let Some(hint) = &opt.hint {
                     d = d.description(hint);
                 }
                 d

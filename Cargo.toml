@@ -19,21 +19,24 @@ junit = { path = "junit.xml" }
 parking_lot = "0.12"
 anstyle = "1"
 unicode-width = "0.2"
-jiff = { version = "0.2", optional = true }
+terminal_size = "0.4"
+jiff = { version = "0.2", optional = true, features = ["js"] }
 chrono = { version = "0.4", optional = true }
 log = { version = "0.4", optional = true }
 tracing = { version = "0.1", optional = true }
-web-sys = { version = "0.3", optional = true, features = ["console"] }
+backtrace = { version = "0.3", optional = true }
+web-sys = { version = "0.3", optional = true, features = ["console", "Window"] }
 wasm-bindgen = { version = "0.2", optional = true }
 demand = { version = "2", optional = true }
 
 [features]
-default = ["jiff"]
+default = ["jiff", "backtrace"]
 jiff = ["dep:jiff"]
 chrono = ["dep:chrono"]
 log = ["dep:log"]
 tracing = ["dep:tracing"]
-wasm = ["dep:web-sys", "dep:wasm-bindgen"]
+backtrace = ["dep:backtrace"]
+browser = ["dep:web-sys", "dep:wasm-bindgen"]
 prompt = ["dep:demand"]
 
 [[example]]
@@ -41,15 +44,24 @@ name = "basic"
 path = "examples/basic.rs"
 
 [[example]]
+name = "error"
+path = "examples/error.rs"
+
+[[example]]
+name = "box"
+path = "examples/box.rs"
+
+[[example]]
 name = "custom_reporter"
 path = "examples/custom_reporter.rs"
 
-[[example]]
-name = "formats"
-path = "examples/formats.rs"
-
 [dev-dependencies]
 divan = { version = "4", package = "codspeed-divan-compat" }
+wasm-bindgen-test = "0.3"
+console_error_panic_hook = "0.1"
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+getrandom = { version = "0.2", features = ["js"] }
 
 [[bench]]
 name = "log_bench"

@@ -1,5 +1,4 @@
 // ─── String utilities: strip ANSI, alignment ──────────────────────────────────
-// Ported from consola-js src/utils/string.ts
 
 /// Strip ANSI escape codes from a string.
 pub fn strip_ansi(text: &str) -> String {

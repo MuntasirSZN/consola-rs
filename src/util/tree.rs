@@ -58,7 +58,7 @@ impl Default for TreeOptions {
 /// Format items into a tree string.
 pub fn format_tree(items: &[TreeItem], options: &TreeOptions) -> String {
     let tree = build_tree(items, options);
-    if let Some(ref color) = options.color {
+    if let Some(color) = &options.color {
         colorize(color, &tree)
     } else {
         tree

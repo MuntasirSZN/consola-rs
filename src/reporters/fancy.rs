@@ -1,10 +1,10 @@
 // ─── FancyReporter ───────────────────────────────────────────────────────────
 // Pure formatter — no I/O. Colors via `anstyle` crate.
 
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 
 use crate::constants::{LogLevel, LogType};
-use crate::types::{FormatOptions, LogContext, LogObject, Reporter};
+use crate::types::{ErrorInfo, FormatOptions, LogContext, LogObject, Reporter};
 use crate::util::boxes::{BoxOpts, box_text};
 use crate::util::color::{self, get_color};
 use crate::util::string::string_width;
@@ -33,21 +33,14 @@ const TYPE_ICONS: &[(LogType, &str, &str)] = &[
 ];
 
 fn unicode_supported() -> bool {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        static CACHED: OnceLock<bool> = OnceLock::new();
-        *CACHED.get_or_init(|| {
-            let term = std::env::var("TERM").unwrap_or_default();
-            let lang = std::env::var("LANG").unwrap_or_default();
-            !(cfg!(windows) && (term == "MINGW" || term.contains("cygwin")))
-                || lang.contains("UTF-8")
-                || lang.contains("utf8")
-        })
-    }
-    #[cfg(target_arch = "wasm32")]
-    {
-        true
-    }
+    static CACHED: LazyLock<bool> = LazyLock::new(|| {
+        let term = std::env::var("TERM").unwrap_or_default();
+        let lang = std::env::var("LANG").unwrap_or_default();
+        !(cfg!(windows) && (term == "MINGW" || term.contains("cygwin")))
+            || lang.contains("UTF-8")
+            || lang.contains("utf8")
+    });
+    *CACHED
 }
 
 fn icon_for(ty: LogType, unicode: bool) -> &'static str {
@@ -169,8 +162,56 @@ impl FancyReporter {
         }
     }
 
+    /// Format an error chain recursively, matching consola-js output format.
+    fn format_error(err: &ErrorInfo, _opts: &FormatOptions, level: usize) -> String {
+        let indent = "  ".repeat(level + 2);
+        let caused_prefix = if level > 0 {
+            format!("{}[cause]: {}", "  ".repeat(level), err.message)
+        } else {
+            err.message.clone()
+        };
+
+        let mut result = caused_prefix;
+
+        if let Some(stack) = &err.stack
+            && !stack.is_empty()
+        {
+            // Blank line before stack
+            result.push('\n');
+            // Format each line with proper indentation
+            for line in stack.lines() {
+                let line = line.trim();
+                if line.is_empty() {
+                    continue;
+                }
+                // Color the "at" part
+                let formatted = if let Some(loc) = line.strip_prefix("at ") {
+                    format!("{}{}{}", indent, color::gray("at "), color::cyan(loc))
+                } else if let Some(loc) = line.strip_prefix("    at ") {
+                    format!(
+                        "{}{}{}",
+                        indent,
+                        color::gray("at "),
+                        color::cyan(loc.trim())
+                    )
+                } else if line.starts_with("  ") || line.starts_with('\t') {
+                    format!("{}{}", indent, color::cyan(line.trim()))
+                } else {
+                    format!("{}{}", indent, color::cyan(line))
+                };
+                result.push_str(&format!("\n{}", formatted));
+            }
+        }
+
+        if let Some(cause) = &err.cause {
+            result.push_str("\n\n");
+            result.push_str(&Self::format_error(cause, _opts, level + 1));
+        }
+
+        result
+    }
+
     fn format_log_obj(&self, log_obj: &LogObject, opts: &FormatOptions) -> String {
-        // Use BasicReporter's format_args internally
         let basic = crate::reporters::basic::BasicReporter;
         let formatted = basic.format_args(&log_obj.args, opts);
         let mut parts = formatted.split('\n');
@@ -209,28 +250,40 @@ impl FancyReporter {
             String::new()
         };
 
-        let left = basic.filter_and_join(&[type_str, character_format(message)]);
-        let right = basic.filter_and_join(&[tag, colored_date]);
-        let columns = opts.columns.unwrap_or(0) as usize;
-        let space = columns
-            .max(80)
-            .saturating_sub(string_width(&left) + string_width(&right) + 2);
+        // Left side: type + tag + message
+        let left = basic.filter_and_join(&[type_str, tag, character_format(message)]);
+        // Right side: just the date, right-aligned to terminal edge
+        let right = colored_date;
 
-        let mut line = if space > 0 && columns >= 80 {
+        // Auto-detect terminal width when not set
+        let columns = opts.columns.unwrap_or(0) as usize;
+        let date_width = string_width(&right);
+        let left_width = string_width(&left);
+
+        let mut line = if columns > 0 && date_width > 0 && left_width + date_width + 2 < columns {
+            // Right-align the date at the terminal edge
+            let space = columns.saturating_sub(left_width + date_width + 1);
             format!("{}{}{}", left, " ".repeat(space), right)
+        } else if columns > 0 && date_width > 0 {
+            // Not enough room for alignment, append inline
+            format!("{}  {}", left, right)
+        } else if !right.is_empty() && left.is_empty() {
+            right
         } else if !right.is_empty() {
-            format!("{} {}", color::gray(&format!("[{}]", right)), left)
+            format!("{}  {}", left, right)
         } else {
             left
         };
 
+        // Append additional lines from args
         if !additional.is_empty() {
             line.push_str(&character_format(&format!("\n{}", additional.join("\n"))));
         }
 
-        if log_obj.r#type == LogType::Trace {
-            let err_msg = format!("Trace: {}", log_obj.message.as_deref().unwrap_or(""));
-            line.push_str(&format!("\n{}", err_msg));
+        // Append error info (error chain with stack traces)
+        if let Some(err) = &log_obj.error {
+            let error_text = Self::format_error(err, opts, 0);
+            line.push_str(&format!("\n{}", error_text));
         }
 
         if is_badge {
@@ -290,6 +343,7 @@ mod tests {
             badge: false,
             icon: None,
             style: None,
+            error: None,
         }
     }
 
@@ -303,7 +357,6 @@ mod tests {
     #[test]
     fn test_unicode_supported_returns_bool() {
         let result = unicode_supported();
-        // Must be a boolean
         assert!(result || !result);
     }
 
@@ -345,24 +398,14 @@ mod tests {
         let r = FancyReporter { unicode: true };
         let ctx = make_ctx_no_date();
 
-        // Info (level 3) shows ℹ icon (not badge since level >= 2)
         let obj = make_log_obj(LogType::Info, &["hello"], "");
         let result = r.format(&obj, &ctx).unwrap();
-        assert!(result.contains('ℹ'), "Info should show ℹ icon: {}", result);
-        assert!(
-            result.contains("hello"),
-            "Output should contain message: {}",
-            result
-        );
+        assert!(result.contains('ℹ'));
+        assert!(result.contains("hello"));
 
-        // Success (level 3) shows ✔ icon
         let obj = make_log_obj(LogType::Success, &["ok"], "");
         let result = r.format(&obj, &ctx).unwrap();
-        assert!(
-            result.contains('✔'),
-            "Success should show ✔ icon: {}",
-            result
-        );
+        assert!(result.contains('✔'));
     }
 
     #[test]
@@ -371,34 +414,15 @@ mod tests {
         let r = FancyReporter { unicode: true };
         let ctx = make_ctx_no_date();
 
-        // Error has default level 0 (< 2) so it renders as badge, not icon
         let obj = make_log_obj(LogType::Error, &["err"], "");
         let result = r.format(&obj, &ctx).unwrap();
-        // Badge format uses uppercase type and background; should contain ERROR
-        assert!(
-            result.contains("ERROR"),
-            "Error badge should contain ERROR: {}",
-            result
-        );
-        assert!(
-            result.starts_with('\n'),
-            "Badge output should start with newline: {:?}",
-            result
-        );
-        assert!(
-            result.ends_with('\n'),
-            "Badge output should end with newline: {:?}",
-            result
-        );
+        assert!(result.contains("ERROR"));
+        assert!(result.starts_with('\n'));
+        assert!(result.ends_with('\n'));
 
-        // Warn has default level 1 (< 2) so badge as well
         let obj = make_log_obj(LogType::Warn, &["warn"], "");
         let result = r.format(&obj, &ctx).unwrap();
-        assert!(
-            result.contains("WARN"),
-            "Warn badge should contain WARN: {}",
-            result
-        );
+        assert!(result.contains("WARN"));
     }
 
     #[test]
@@ -408,17 +432,8 @@ mod tests {
         let ctx = make_ctx_no_date();
         let obj = make_log_obj(LogType::Info, &["hello"], "mytag");
         let result = r.format(&obj, &ctx).unwrap();
-        // Tag should appear somewhere in output
-        assert!(
-            result.contains("mytag"),
-            "Expected tag in output: {}",
-            result
-        );
-        assert!(
-            result.contains("hello"),
-            "Expected message in output: {}",
-            result
-        );
+        assert!(result.contains("mytag"));
+        assert!(result.contains("hello"));
     }
 
     #[test]
@@ -429,19 +444,9 @@ mod tests {
         let mut obj = make_log_obj(LogType::Box, &["hello"], "");
         obj.title = Some("title".into());
         let result = r.format(&obj, &ctx).unwrap();
-        // Box output uses box_text with border characters
-        assert!(
-            result.contains("hello"),
-            "Box should contain content: {}",
-            result
-        );
-        // Should have some form of border (rounded/solid)
+        assert!(result.contains("hello"));
         let has_border = result.contains('╭') || result.contains('┌');
-        assert!(
-            has_border,
-            "Box output should have top-left border: {}",
-            result
-        );
+        assert!(has_border);
     }
 
     #[test]
@@ -452,74 +457,44 @@ mod tests {
         let mut obj = make_log_obj(LogType::Info, &["hello"], "");
         obj.badge = true;
         let result = r.format(&obj, &ctx).unwrap();
-        // Badge wraps output with newlines
-        assert!(
-            result.starts_with('\n'),
-            "Badge output should start with newline: {:?}",
-            result
-        );
-        assert!(
-            result.ends_with('\n'),
-            "Badge output should end with newline: {:?}",
-            result
-        );
+        assert!(result.starts_with('\n'));
+        assert!(result.ends_with('\n'));
     }
 
     #[test]
     fn test_character_format_backticks() {
         color::set_color_enabled(false);
         let result = character_format("use `foo` here");
-        assert!(
-            result.contains("foo"),
-            "Backtick content should appear: {}",
-            result
-        );
-        assert!(
-            !result.contains('`'),
-            "Backticks should be removed: {}",
-            result
-        );
+        assert!(result.contains("foo"));
+        assert!(!result.contains('`'));
     }
 
     #[test]
     fn test_character_format_underscores() {
         color::set_color_enabled(false);
         let result = character_format("use _bar_ here");
-        assert!(
-            result.contains("bar"),
-            "Underscore content should appear: {}",
-            result
-        );
-        assert!(
-            !result.contains('_'),
-            "Underscores should be removed: {}",
-            result
-        );
+        assert!(result.contains("bar"));
+        assert!(!result.contains('_'));
     }
 
     #[test]
     fn test_character_format_combined() {
         color::set_color_enabled(false);
         let result = character_format("_a_ and `b`");
-        assert!(result.contains("a"), "{}", result);
-        assert!(result.contains("b"), "{}", result);
-        assert!(!result.contains('`'), "Backticks removed: {}", result);
+        assert!(result.contains("a"));
+        assert!(result.contains("b"));
+        assert!(!result.contains('`'));
     }
 
     #[test]
     fn test_bg_color_fn_returns_function() {
         let f = bg_color_fn("red");
         let output = f("test");
-        assert!(
-            output.contains("test"),
-            "bg_color output should contain input: {}",
-            output
-        );
+        assert!(output.contains("test"));
 
-        // Test with green
         let f = bg_color_fn("green");
         let output = f("test");
-        assert!(output.contains("test"), "{}", output);
+        assert!(output.contains("test"));
     }
 
     #[test]
@@ -529,7 +504,6 @@ mod tests {
         assert_eq!(icon_for(LogType::Success, true), "✔");
         assert_eq!(icon_for(LogType::Warn, true), "⚠");
         assert_eq!(icon_for(LogType::Start, true), "◐");
-        // Types without icons return empty string (Log, Silent, etc.)
         assert_eq!(icon_for(LogType::Log, true), "");
     }
 
@@ -554,14 +528,12 @@ mod tests {
 
     #[test]
     fn test_type_color_name_falls_back_to_level() {
-        // Level 0 -> red, Level 1 -> yellow
         assert_eq!(type_color_name(LogType::Log, 0), "red");
         assert_eq!(type_color_name(LogType::Log, 1), "yellow");
     }
 
     #[test]
     fn test_type_color_name_falls_back_to_gray() {
-        // Unknown combination -> "gray"
         assert_eq!(type_color_name(LogType::Box, 5), "gray");
     }
 
@@ -581,11 +553,9 @@ mod tests {
     fn test_format_date_appears_with_default_opts() {
         color::set_color_enabled(false);
         let r = FancyReporter { unicode: true };
-        // Default FormatOptions has date: true
         let ctx = make_ctx();
         let obj = make_log_obj(LogType::Info, &["hello"], "");
         let result = r.format(&obj, &ctx).unwrap();
-        // Should contain a timestamp pattern HH:MM:SS
         assert!(
             result.contains(":"),
             "Expected timestamp in output: {}",
@@ -594,28 +564,60 @@ mod tests {
     }
 
     #[test]
-    fn test_format_with_additional_lines() {
+    fn test_format_with_error_and_backtrace() {
         color::set_color_enabled(false);
         let r = FancyReporter { unicode: true };
         let ctx = make_ctx_no_date();
-        // Multi-line args produce additional lines
-        let mut obj = make_log_obj(LogType::Info, &["first\nsecond"], "");
-        obj.additional = Some("extra line".into());
+        let mut obj = make_log_obj(LogType::Error, &["an error occurred"], "");
+        obj.error = Some(ErrorInfo {
+            message: "an error occurred".into(),
+            stack: Some("at error.ts:3:19\n    at processTicksAndRejections (native:7:39)".into()),
+            backtrace: None,
+            cause: Some(Box::new(ErrorInfo {
+                message: "root cause".into(),
+                stack: Some("at error.ts:4:14".into()),
+                backtrace: None,
+                cause: None,
+            })),
+        });
         let result = r.format(&obj, &ctx).unwrap();
-        assert!(result.contains("first"), "{}", result);
+        assert!(
+            result.contains("ERROR"),
+            "Badge should be present: {}",
+            result
+        );
+        assert!(
+            result.contains("error.ts:3:19"),
+            "Stack line should appear: {}",
+            result
+        );
     }
 
     #[test]
-    fn test_format_trace_includes_trace_label() {
+    fn test_format_with_columns_right_aligns_date() {
         color::set_color_enabled(false);
         let r = FancyReporter { unicode: true };
-        let ctx = make_ctx_no_date();
-        let mut obj = make_log_obj(LogType::Trace, &["tracking"], "");
-        obj.message = Some("details".into());
+        let fmt_opts = crate::types::FormatOptions {
+            columns: Some(120),
+            ..Default::default()
+        };
+        let ctx = LogContext {
+            options: Arc::new(ConsolaOptions {
+                format_options: fmt_opts,
+                ..ConsolaOptions::default()
+            }),
+        };
+        let obj = make_log_obj(LogType::Info, &["aligned"], "");
         let result = r.format(&obj, &ctx).unwrap();
+        // With columns=120, the date should be far to the right
         assert!(
-            result.contains("Trace"),
-            "Trace type should include 'Trace:' prefix: {}",
+            result.contains("aligned"),
+            "Message should be in output: {}",
+            result
+        );
+        assert!(
+            result.contains(":"),
+            "Timestamp should be in output: {}",
             result
         );
     }

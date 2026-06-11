@@ -15,25 +15,18 @@ pub fn set_color_enabled(enabled: bool) {
 /// `--no-color`, `--color`, and terminal detection.
 pub fn color_enabled() -> bool {
     *COLOR_ENABLED.get_or_init(|| {
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let no_color = std::env::var("NO_COLOR").is_ok();
-            let force_color = std::env::var("FORCE_COLOR").is_ok();
-            let is_disabled = no_color || std::env::args().any(|a| a == "--no-color");
-            let is_forced = force_color || std::env::args().any(|a| a == "--color");
-            if is_disabled {
-                return false;
-            }
-            if is_forced {
-                return true;
-            }
-            use std::io::IsTerminal;
-            std::io::stdout().is_terminal()
+        let no_color = std::env::var("NO_COLOR").is_ok();
+        let force_color = std::env::var("FORCE_COLOR").is_ok();
+        let is_disabled = no_color || std::env::args().any(|a| a == "--no-color");
+        let is_forced = force_color || std::env::args().any(|a| a == "--color");
+        if is_disabled {
+            return false;
         }
-        #[cfg(target_arch = "wasm32")]
-        {
-            false
+        if is_forced {
+            return true;
         }
+        use std::io::IsTerminal;
+        std::io::stdout().is_terminal()
     })
 }
 

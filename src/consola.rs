@@ -86,13 +86,6 @@ impl Consola {
         self.options.lock().reporters = reporters;
     }
 
-    // ── Prompt ────────────────────────────────────────────────────────────
-
-    /// Prompt the user with a message. Not supported in core consola.
-    pub fn prompt(&self, _message: &str) -> Result<(), &'static str> {
-        Err("prompt is not supported in core consola")
-    }
-
     // ── Instance creation ─────────────────────────────────────────────────
 
     /// Create a new `Consola` instance by merging the current options with the given overrides.
@@ -172,18 +165,6 @@ impl Consola {
         })
     }
 
-    // ── Mock ──────────────────────────────────────────────────────────────
-
-    /// Replace log methods with mocks. Not persisted across `create()`.
-    pub fn mock_types<F>(&self, _mock_fn: F)
-    where
-        F: Fn(LogType, &LogObjectInput) -> bool + Send + Sync + 'static,
-    {
-        // Mock support is maintained at the application level via log/tracing.
-        // This is a simplified stub — for full mock support enable the `log` feature
-        // and install a test logger.
-    }
-
     // ── Pause / Resume ────────────────────────────────────────────────────
 
     /// Pause all logging. Logs are queued and will be flushed on [`resume_logs`].
@@ -202,21 +183,6 @@ impl Consola {
             self._log_fn(&defaults, &args, is_raw);
         }
     }
-
-    // ── Console wrapping (stubs for API compat) ───────────────────────────
-
-    /// Wrap `console.log` etc. (stub — not supported in core consola).
-    pub fn wrap_console(&self) {}
-    /// Restore the original console methods (stub — not supported in core consola).
-    pub fn restore_console(&self) {}
-    /// Wrap stdout/stderr (stub — not supported in core consola).
-    pub fn wrap_std(&self) {}
-    /// Restore the original stdout/stderr (stub — not supported in core consola).
-    pub fn restore_std(&self) {}
-    /// Wrap both console and std (stub — not supported in core consola).
-    pub fn wrap_all(&self) {}
-    /// Restore both console and std (stub — not supported in core consola).
-    pub fn restore_all(&self) {}
 
     // ── Internal logging ──────────────────────────────────────────────────
 
@@ -1100,70 +1066,7 @@ mod tests {
         assert_eq!(r.count(), 1);
     }
 
-    // ── 8. mock_types() / clear_mock() ─────────────────────────────────────
-
-    // mock_types is a stub; we just verify it doesn't panic and doesn't
-    // interfere with normal operation.
-    #[test]
-    fn test_mock_types_noop() {
-        let r = CaptureReporter::new();
-        let c = Consola::new(ConsolaOptions {
-            reporters: vec![Box::new(r.clone())],
-            ..ConsolaOptions::default()
-        });
-
-        // Install a mock that would theoretically capture all log calls
-        c.mock_types(|ty: LogType, _input: &LogObjectInput| -> bool {
-            // In a real impl this would capture; here it's a stub
-            let _ = ty;
-            false
-        });
-
-        // Logging should still work normally
-        assert!(c.info("after mock"));
-        assert_eq!(r.count(), 1);
-        assert!(r.last().unwrap().contains("after mock"));
-    }
-
-    // There is no clear_mock method; the stub mock_types replaces the previous
-    // one each time since it uses a generic fn pointer.
-
-    // ── 9. Wrap stubs ──────────────────────────────────────────────────────
-
-    #[test]
-    fn test_wrap_console_stub() {
-        let c = Consola::new(ConsolaOptions::default());
-        c.wrap_console();
-        c.restore_console();
-    }
-
-    #[test]
-    fn test_wrap_std_stub() {
-        let c = Consola::new(ConsolaOptions::default());
-        c.wrap_std();
-        c.restore_std();
-    }
-
-    #[test]
-    fn test_wrap_all_stub() {
-        let c = Consola::new(ConsolaOptions::default());
-        c.wrap_all();
-        c.restore_all();
-    }
-
-    #[test]
-    fn test_wrap_stubs_do_not_panic() {
-        // All combined in one test — they are all no-ops
-        let c = Consola::new(ConsolaOptions::default());
-        c.wrap_console();
-        c.restore_console();
-        c.wrap_std();
-        c.restore_std();
-        c.wrap_all();
-        c.restore_all();
-    }
-
-    // ── 10. log() / log_raw() / log_obj() / log_obj_raw() ──────────────────
+    // ── 8. log() / log_raw() / log_obj() / log_obj_raw() ──────────────────
 
     #[test]
     fn test_log_string_basic() {
@@ -1248,7 +1151,7 @@ mod tests {
         assert!(!c.log("should be filtered")); // LOG level = 2 > WARN level = 1
     }
 
-    // ── 11. All 14 log-type methods ────────────────────────────────────────
+    // ── 9. All 14 log-type methods ────────────────────────────────────────
 
     #[test]
     fn test_all_type_methods_info() {
@@ -1430,7 +1333,7 @@ mod tests {
         assert_eq!(r.count(), 1);
     }
 
-    // ── 12. Raw variants ───────────────────────────────────────────────────
+    // ── 10. Raw variants ───────────────────────────────────────────────────
 
     #[test]
     fn test_info_raw() {
@@ -1577,7 +1480,7 @@ mod tests {
         assert!(r.last().unwrap().contains("raw-verbose"));
     }
 
-    // ── 13. Throttle dedup ─────────────────────────────────────────────────
+    // ── 11. Throttle dedup ─────────────────────────────────────────────────
 
     #[test]
     fn test_throttle_dedup_same_message() {
@@ -1680,7 +1583,7 @@ mod tests {
         assert_eq!(r.count(), 4);
     }
 
-    // ── 14. Level filtering ────────────────────────────────────────────────
+    // ── 12. Level filtering ────────────────────────────────────────────────
 
     #[test]
     fn test_level_filter_below_info() {
@@ -1760,20 +1663,7 @@ mod tests {
         assert!(!c.debug("debug"));
     }
 
-    // ── 15. prompt() returns error ─────────────────────────────────────────
-
-    #[test]
-    fn test_prompt_returns_error() {
-        let c = Consola::new(ConsolaOptions::default());
-        let result = c.prompt("any message");
-        assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            "prompt is not supported in core consola"
-        );
-    }
-
-    // ── 16. Reporter errors caught ─────────────────────────────────────────
+    // ── 13. Reporter errors caught ─────────────────────────────────────────
 
     #[test]
     fn test_reporter_error_during_emit() {
@@ -1806,7 +1696,7 @@ mod tests {
         assert!(c.info("will error"));
     }
 
-    // ── 17. with_defaults + tag order ──────────────────────────────────────
+    // ── 14. with_defaults + tag order ──────────────────────────────────────
 
     // The create() method merges tags with ':' separator when both existing
     // and new tags are present. The log methods don't apply stored defaults,
@@ -1848,7 +1738,7 @@ mod tests {
         assert!(child.info("test"));
     }
 
-    // ── 18. Direct write pipeline ────────────────────────────────────────
+    // ── 15. Direct write pipeline ────────────────────────────────────────
 
     // The full pipeline: _log_fn -> _emit -> write_line writes to stdout/stderr.
     // We verify the whole flow completes without errors.

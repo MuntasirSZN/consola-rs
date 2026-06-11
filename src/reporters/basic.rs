@@ -71,6 +71,7 @@ impl BasicReporter {
     }
 
     /// Formats the current time as 12-hour local time (`h:mm:ss AM/PM`).
+    #[allow(unreachable_code)]
     pub fn format_date(&self, opts: &FormatOptions) -> String {
         if opts.date {
             #[cfg(feature = "jiff")]
@@ -115,17 +116,19 @@ impl BasicReporter {
             }
 
             // Fallback: UTC-based 12-hour
-            let total_secs = (crate::types::now_ms() / 1000) as u64;
-            let hours = (total_secs / 3600) % 24;
-            let mins = (total_secs / 60) % 60;
-            let secs = total_secs % 60;
-            let hour12 = match hours {
-                0 => 12,
-                1..=12 => hours,
-                _ => hours - 12,
-            };
-            let ampm = if hours < 12 { "AM" } else { "PM" };
-            format!("{}:{:02}:{:02} {}", hour12, mins, secs, ampm)
+            {
+                let total_secs = (crate::types::now_ms() / 1000) as u64;
+                let hours = (total_secs / 3600) % 24;
+                let mins = (total_secs / 60) % 60;
+                let secs = total_secs % 60;
+                let hour12 = match hours {
+                    0 => 12,
+                    1..=12 => hours,
+                    _ => hours - 12,
+                };
+                let ampm = if hours < 12 { "AM" } else { "PM" };
+                format!("{}:{:02}:{:02} {}", hour12, mins, secs, ampm)
+            }
         } else {
             String::new()
         }

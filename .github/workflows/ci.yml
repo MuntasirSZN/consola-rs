@@ -69,7 +69,7 @@ jobs:
       - name: Setup Rust
         uses: moonrepo/setup-rust@abb2d32350334249b178c401e5ec5836e0cd88d3 # v1.3.0
         with:
-          bins: cargo-nextest,just
+          bins: cargo-nextest,just,cargo-hack
       - name: Build
         run: just build
       - name: Run tests

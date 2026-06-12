@@ -115,7 +115,28 @@ impl BasicReporter {
                 );
             }
 
-            // Fallback: UTC-based 12-hour
+            #[cfg(all(feature = "time", not(any(feature = "jiff", feature = "chrono"))))]
+            {
+                let offset =
+                    time::UtcOffset::current_local_offset().unwrap_or(time::UtcOffset::UTC);
+                let now = time::OffsetDateTime::now_utc().to_offset(offset);
+                let h = now.hour();
+                let hour12 = match h {
+                    0 => 12,
+                    1..=12 => h,
+                    _ => h - 12,
+                };
+                let ampm = if h < 12 { "AM" } else { "PM" };
+                return format!(
+                    "{}:{:02}:{:02} {}",
+                    hour12,
+                    now.minute(),
+                    now.second(),
+                    ampm
+                );
+            }
+
+            // Fallback: UTC-based 12-hour (unreachable when a crate feature is active)
             {
                 let total_secs = (crate::types::now_ms() / 1000) as u64;
                 let hours = (total_secs / 3600) % 24;

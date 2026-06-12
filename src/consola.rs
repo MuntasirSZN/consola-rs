@@ -2,7 +2,7 @@
 
 use std::time::Instant;
 
-use parking_lot::Mutex;
+use crate::sync::Mutex;
 
 use crate::constants::{LogLevel, LogType, log_levels, log_type_defaults, normalize_log_level};
 use crate::types::{ConsolaOptions, LogContext, LogObject, LogObjectInput, Reporter};

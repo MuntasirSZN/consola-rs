@@ -245,10 +245,14 @@ let choice = prompt::select("Pick one", &SelectPromptOptions {
 | `jiff`     | yes      | Timestamps via `jiff`                          |
 | `backtrace`| yes      | Error backtrace capture via `backtrace` crate  |
 | `chrono`   | no       | Alternative timestamps via `chrono`            |
+| `time`     | no       | Alternative timestamps via `time`              |
 | `log`      | no       | Implement `log::Log` trait                     |
 | `tracing`  | no       | Implement `tracing::Subscriber`                |
 | `browser`  | no       | WASM browser console integration               |
-| `prompt`   | no       | Interactive prompts (`text`, `confirm`, etc.)  |
+| `parking_lot` | no    | Use `parking_lot::Mutex` instead of `std::sync::Mutex` |
+| `prompt`   | no       | Interactive prompts (`text`, `confirm`, etc.) (demand backend)  |
+| `prompt-inquire`   | no       | Interactive prompts (`text`, `confirm`, etc.) (inquire backend)  |
+| `prompt-dialoguer`   | no       | Interactive prompts (`text`, `confirm`, etc.) (dialoguer backend)  |
 
 ## Thread Safety
 

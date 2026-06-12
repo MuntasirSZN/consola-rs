@@ -356,8 +356,8 @@ mod tests {
 
     #[test]
     fn test_unicode_supported_returns_bool() {
-        let result = unicode_supported();
-        assert!(result || !result);
+        let _ = unicode_supported();
+        // Function called successfully — returns a bool without panicking
     }
 
     #[test]

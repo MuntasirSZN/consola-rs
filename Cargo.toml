@@ -16,7 +16,7 @@ retries = 1
 junit = { path = "junit.xml" }
 
 [dependencies]
-parking_lot = "0.12"
+parking_lot = { version = "0.12", optional = true }
 anstyle = "1"
 unicode-width = "0.2"
 terminal_size = "0.4"
@@ -28,16 +28,23 @@ backtrace = { version = "0.3", optional = true }
 web-sys = { version = "0.3", optional = true, features = ["console", "Window"] }
 wasm-bindgen = { version = "0.2", optional = true }
 demand = { version = "2", optional = true }
+time = { version = "0.3", optional = true, features = ["local-offset"] }
+inquire = { version = "0.7", optional = true }
+dialoguer = { version = "0.11", optional = true }
 
 [features]
 default = ["jiff", "backtrace"]
 jiff = ["dep:jiff"]
 chrono = ["dep:chrono"]
+time = ["dep:time"]
 log = ["dep:log"]
 tracing = ["dep:tracing"]
 backtrace = ["dep:backtrace"]
 browser = ["dep:web-sys", "dep:wasm-bindgen"]
+parking_lot = ["dep:parking_lot"]
 prompt = ["dep:demand"]
+prompt-inquire = ["dep:inquire"]
+prompt-dialoguer = ["dep:dialoguer"]
 
 [[example]]
 name = "basic"

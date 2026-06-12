@@ -3,11 +3,16 @@
 //!
 //! Features:
 //!   - `jiff` (default): timestamps via jiff
+//!   - `backtrace` (default): error backtrace capture via `backtrace` crate
 //!   - `chrono`: timestamps via chrono
+//!   - `time`: timestamps via time
 //!   - `log`: implement `log::Log` trait (receive from `log` crate)
 //!   - `tracing`: implement `tracing::Subscriber` (receive from `tracing` crate)
-//!   - `backtrace` (default): error backtrace capture via `backtrace` crate
 //!   - `browser`: browser console styling via `web-sys` (runtime detection)
+//!   - `parking_lot`: use `parking_lot::Mutex` (default: std::sync::Mutex)
+//!   - `prompt`: interactive prompts via demand (default)
+//!   - `prompt-inquire`: interactive prompts via inquire
+//!   - `prompt-dialoguer`: interactive prompts via dialoguer
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 
@@ -17,6 +22,8 @@ pub mod consola;
 pub mod constants;
 /// Built-in reporter implementations (`FancyReporter`, `BasicReporter`).
 pub mod reporters;
+/// Internal synchronization primitives (parking_lot or std).
+pub(crate) mod sync;
 /// Shared types and traits, including `Reporter`, `LogObject`, and option structs.
 pub mod types;
 /// Utility functions for formatting, colors, and string manipulation.
@@ -97,11 +104,20 @@ pub use util::*;
 
 // ─── Prompt module ────────────────────────────────────────────────────────
 
-#[cfg(feature = "prompt")]
 /// Interactive prompts for user input.
 ///
 /// Provides [`text()`], [`confirm()`], [`select()`], and [`multiselect()`] functions,
 /// plus the sentinel constant [`K_CANCEL`] returned when the user aborts.
+///
+/// Backend selection (priority):
+/// - `prompt-inquire` → inquire
+/// - `prompt-dialoguer` → dialoguer
+/// - `prompt` → demand (default)
+#[cfg(any(
+    feature = "prompt",
+    feature = "prompt-inquire",
+    feature = "prompt-dialoguer"
+))]
 pub mod prompt {
     /// Sentinel value returned when a user cancels a prompt.
     pub const K_CANCEL: &str = "Symbol(cancel)";
@@ -111,79 +127,216 @@ pub mod prompt {
         SelectPromptOptions, TextPromptOptions,
     };
 
-    use demand::{Confirm, Input, MultiSelect, Select};
+    // ── Backend dispatch ───────────────────────────────────────────────
 
-    fn map_io_error(e: std::io::Error) -> String {
-        if e.kind() == std::io::ErrorKind::Interrupted {
-            K_CANCEL.to_string()
-        } else {
-            e.to_string()
+    /// Inquire backend (highest priority).
+    #[cfg(feature = "prompt-inquire")]
+    mod backend {
+        use super::*;
+
+        pub(super) fn text(message: &str, opts: &TextPromptOptions) -> Result<String, String> {
+            let mut input = inquire::Text::new(message);
+            if let Some(placeholder) = &opts.placeholder {
+                input = input.with_placeholder(placeholder);
+            }
+            if let Some(default) = &opts.default {
+                input = input.with_default(default);
+            }
+            input.prompt().map_err(|e| e.to_string())
+        }
+
+        pub(super) fn confirm(message: &str, opts: &ConfirmPromptOptions) -> Result<bool, String> {
+            let mut dialog = inquire::Confirm::new(message);
+            if let Some(initial) = opts.initial {
+                dialog = dialog.with_default(initial);
+            }
+            dialog.prompt().map_err(|e| e.to_string())
+        }
+
+        pub(super) fn select(message: &str, opts: &SelectPromptOptions) -> Result<String, String> {
+            let labels: Vec<String> = opts.options.iter().map(|o| o.label.clone()).collect();
+            let sel = inquire::Select::new(message, labels.clone())
+                .prompt()
+                .map_err(|e| e.to_string())?;
+            let i = labels.iter().position(|s| *s == sel).unwrap();
+            Ok(opts.options[i].value.clone())
+        }
+
+        pub(super) fn multiselect(
+            message: &str,
+            opts: &MultiSelectOptions,
+        ) -> Result<Vec<String>, String> {
+            let labels: Vec<String> = opts.options.iter().map(|o| o.label.clone()).collect();
+            let selected = inquire::MultiSelect::new(message, labels.clone())
+                .prompt()
+                .map_err(|e| e.to_string())?;
+            Ok(selected
+                .iter()
+                .map(|sel| {
+                    let i = labels.iter().position(|s| *s == *sel).unwrap();
+                    opts.options[i].value.clone()
+                })
+                .collect())
         }
     }
 
+    /// Dialoguer backend (middle priority).
+    #[cfg(all(feature = "prompt-dialoguer", not(feature = "prompt-inquire")))]
+    mod backend {
+        use super::*;
+
+        pub(super) fn text(message: &str, opts: &TextPromptOptions) -> Result<String, String> {
+            let mut input = dialoguer::Input::<String>::new().with_prompt(message);
+            if let Some(default) = &opts.default {
+                input = input.with_initial_text(default);
+            }
+            input
+                .allow_empty(true)
+                .interact_text()
+                .map_err(|e| e.to_string())
+        }
+
+        pub(super) fn confirm(message: &str, opts: &ConfirmPromptOptions) -> Result<bool, String> {
+            let mut dialog = dialoguer::Confirm::new().with_prompt(message);
+            if let Some(initial) = opts.initial {
+                dialog = dialog.default(initial);
+            }
+            dialog.interact().map_err(|e| e.to_string())
+        }
+
+        pub(super) fn select(message: &str, opts: &SelectPromptOptions) -> Result<String, String> {
+            let items: Vec<&str> = opts.options.iter().map(|o| o.label.as_str()).collect();
+            let i = dialoguer::Select::new()
+                .with_prompt(message)
+                .items(&items)
+                .interact()
+                .map_err(|e| e.to_string())?;
+            Ok(opts.options[i].value.clone())
+        }
+
+        pub(super) fn multiselect(
+            message: &str,
+            opts: &MultiSelectOptions,
+        ) -> Result<Vec<String>, String> {
+            let items: Vec<&str> = opts.options.iter().map(|o| o.label.as_str()).collect();
+            let selected = dialoguer::MultiSelect::new()
+                .with_prompt(message)
+                .items(&items)
+                .interact()
+                .map_err(|e| e.to_string())?;
+            Ok(selected
+                .iter()
+                .map(|&i| opts.options[i].value.clone())
+                .collect())
+        }
+    }
+
+    /// Demand backend (lowest priority, backward compatible).
+    #[cfg(all(
+        feature = "prompt",
+        not(any(feature = "prompt-inquire", feature = "prompt-dialoguer"))
+    ))]
+    mod backend {
+        use super::*;
+        use demand::{Confirm, Input, MultiSelect, Select};
+
+        pub(super) fn text(message: &str, opts: &TextPromptOptions) -> Result<String, String> {
+            let mut input = Input::new(message);
+            if let Some(placeholder) = &opts.placeholder {
+                input = input.placeholder(placeholder);
+            }
+            if let Some(default) = &opts.default {
+                input = input.default_value(default);
+            }
+            input.run().map_err(map_err_demand)
+        }
+
+        pub(super) fn confirm(message: &str, opts: &ConfirmPromptOptions) -> Result<bool, String> {
+            let mut dialog = Confirm::new(message);
+            if let Some(initial) = opts.initial {
+                dialog = dialog.selected(initial);
+            }
+            dialog.run().map_err(map_err_demand)
+        }
+
+        pub(super) fn select(message: &str, opts: &SelectPromptOptions) -> Result<String, String> {
+            let items: Vec<demand::DemandOption<String>> = opts
+                .options
+                .iter()
+                .map(|opt| {
+                    let mut d = demand::DemandOption::with_label(&opt.label, opt.value.clone());
+                    if let Some(hint) = &opt.hint {
+                        d = d.description(hint);
+                    }
+                    d
+                })
+                .collect();
+            Select::new(message)
+                .options(items)
+                .run()
+                .map_err(map_err_demand)
+        }
+
+        pub(super) fn multiselect(
+            message: &str,
+            opts: &MultiSelectOptions,
+        ) -> Result<Vec<String>, String> {
+            let mut ms = MultiSelect::new(message);
+            if opts.required.unwrap_or(false) {
+                ms = ms.min(1);
+            }
+            let items: Vec<demand::DemandOption<String>> = opts
+                .options
+                .iter()
+                .map(|opt| {
+                    let mut d = demand::DemandOption::with_label(&opt.label, opt.value.clone());
+                    if let Some(hint) = &opt.hint {
+                        d = d.description(hint);
+                    }
+                    d
+                })
+                .collect();
+            ms.options(items).run().map_err(map_err_demand)
+        }
+
+        fn map_err_demand(e: std::io::Error) -> String {
+            if e.kind() == std::io::ErrorKind::Interrupted {
+                K_CANCEL.to_string()
+            } else {
+                e.to_string()
+            }
+        }
+    }
+
+    // ── Public API ─────────────────────────────────────────────────────
+
     /// Prompt the user for free-form text input.
     pub fn text(message: &str, opts: &TextPromptOptions) -> Result<String, String> {
-        let mut input = Input::new(message);
-        if let Some(placeholder) = &opts.placeholder {
-            input = input.placeholder(placeholder);
-        }
-        if let Some(default) = &opts.default {
-            input = input.default_value(default);
-        }
-        input.run().map_err(map_io_error)
+        backend::text(message, opts)
     }
 
     /// Prompt the user for a yes/no confirmation.
     pub fn confirm(message: &str, opts: &ConfirmPromptOptions) -> Result<bool, String> {
-        let mut dialog = Confirm::new(message);
-        if let Some(initial) = opts.initial {
-            dialog = dialog.selected(initial);
-        }
-        dialog.run().map_err(map_io_error)
+        backend::confirm(message, opts)
     }
 
     /// Prompt the user to select a single option from a list.
     pub fn select(message: &str, opts: &SelectPromptOptions) -> Result<String, String> {
-        let items: Vec<demand::DemandOption<String>> = opts
-            .options
-            .iter()
-            .map(|opt| {
-                let mut d = demand::DemandOption::with_label(&opt.label, opt.value.clone());
-                if let Some(ref hint) = opt.hint {
-                    d = d.description(hint);
-                }
-                d
-            })
-            .collect();
-        Select::new(message)
-            .options(items)
-            .run()
-            .map_err(map_io_error)
+        backend::select(message, opts)
     }
 
     /// Prompt the user to select one or more options from a list.
     pub fn multiselect(message: &str, opts: &MultiSelectOptions) -> Result<Vec<String>, String> {
-        let mut ms = MultiSelect::new(message);
-        if opts.required.unwrap_or(false) {
-            ms = ms.min(1);
-        }
-        let items: Vec<demand::DemandOption<String>> = opts
-            .options
-            .iter()
-            .map(|opt| {
-                let mut d = demand::DemandOption::with_label(&opt.label, opt.value.clone());
-                if let Some(hint) = &opt.hint {
-                    d = d.description(hint);
-                }
-                d
-            })
-            .collect();
-        ms.options(items).run().map_err(map_io_error)
+        backend::multiselect(message, opts)
     }
 }
 
 /// Interactive prompt support
-#[cfg(not(feature = "prompt"))]
+#[cfg(not(any(
+    feature = "prompt",
+    feature = "prompt-inquire",
+    feature = "prompt-dialoguer"
+)))]
 pub mod prompt {
 
     /// Sentinel value returned when a user cancels a prompt.
@@ -194,24 +347,28 @@ pub mod prompt {
         SelectPromptOptions, TextPromptOptions,
     };
 
-    /// Prompt the user for free-form text input (requires `prompt` feature).
+    /// Prompt the user for free-form text input.
+    /// Requires one of: `prompt`, `prompt-inquire`, or `prompt-dialoguer` feature.
     pub fn text(_message: &str, _opts: &TextPromptOptions) -> Result<String, String> {
-        Err("interactive prompts require the `prompt` Cargo feature".into())
+        Err("interactive prompts require the `prompt`, `prompt-inquire`, or `prompt-dialoguer` Cargo feature".into())
     }
 
-    /// Prompt the user for a yes/no confirmation (requires `prompt` feature).
+    /// Prompt the user for a yes/no confirmation.
+    /// Requires one of: `prompt`, `prompt-inquire`, or `prompt-dialoguer` feature.
     pub fn confirm(_message: &str, _opts: &ConfirmPromptOptions) -> Result<bool, String> {
-        Err("interactive prompts require the `prompt` Cargo feature".into())
+        Err("interactive prompts require the `prompt`, `prompt-inquire`, or `prompt-dialoguer` Cargo feature".into())
     }
 
-    /// Prompt the user to select a single option (requires `prompt` feature).
+    /// Prompt the user to select a single option.
+    /// Requires one of: `prompt`, `prompt-inquire`, or `prompt-dialoguer` feature.
     pub fn select(_message: &str, _opts: &SelectPromptOptions) -> Result<String, String> {
-        Err("interactive prompts require the `prompt` Cargo feature".into())
+        Err("interactive prompts require the `prompt`, `prompt-inquire`, or `prompt-dialoguer` Cargo feature".into())
     }
 
-    /// Prompt the user to select multiple options (requires `prompt` feature).
+    /// Prompt the user to select multiple options.
+    /// Requires one of: `prompt`, `prompt-inquire`, or `prompt-dialoguer` feature.
     pub fn multiselect(_message: &str, _opts: &MultiSelectOptions) -> Result<Vec<String>, String> {
-        Err("interactive prompts require the `prompt` Cargo feature".into())
+        Err("interactive prompts require the `prompt`, `prompt-inquire`, or `prompt-dialoguer` Cargo feature".into())
     }
 }
 

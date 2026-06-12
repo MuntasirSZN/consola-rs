@@ -221,6 +221,13 @@ impl LogObject {
     pub fn timestamp_chrono(&self) -> Option<chrono::DateTime<chrono::Utc>> {
         chrono::DateTime::from_timestamp_millis(self.timestamp_ms)
     }
+
+    /// Return the timestamp as a time::OffsetDateTime (feature = "time").
+    /// Returns `None` if the timestamp is invalid.
+    #[cfg(feature = "time")]
+    pub fn timestamp_time(&self) -> Option<time::OffsetDateTime> {
+        time::OffsetDateTime::from_unix_timestamp_nanos(self.timestamp_ms as i128 * 1_000_000).ok()
+    }
 }
 
 /// Get current time in milliseconds since epoch.
@@ -234,7 +241,13 @@ pub(crate) fn now_ms() -> i64 {
     chrono::Utc::now().timestamp_millis()
 }
 
-#[cfg(not(any(feature = "jiff", feature = "chrono")))]
+#[cfg(all(feature = "time", not(any(feature = "jiff", feature = "chrono"))))]
+pub(crate) fn now_ms() -> i64 {
+    let now = time::OffsetDateTime::now_utc();
+    now.unix_timestamp() * 1000 + now.millisecond() as i64
+}
+
+#[cfg(not(any(feature = "jiff", feature = "chrono", feature = "time")))]
 pub(crate) fn now_ms() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

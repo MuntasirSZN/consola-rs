@@ -89,18 +89,6 @@ Pull request CI runs these jobs (defined in `.github/workflows/ci.yml`):
 - Benchmarks use `codspeed-divan-compat` (`#[divan::bench]`). Don't worry about CodSpeed, only for CI. Will work locally.
 - Test utility: `CaptureReporter` in `src/consola.rs` records formatted output
 
-## Feature Flags
-
-| Feature    | Default | Purpose                    |
-|------------|---------|----------------------------|
-| `jiff`     | yes     | Timestamp provider         |
-| `backtrace`| yes     | Error backtrace capture    |
-| `chrono`   | no      | Alternative timestamps     |
-| `log`      | no      | `log::Log` sink            |
-| `tracing`  | no      | `tracing::Subscriber` sink |
-| `browser`  | no      | WASM web-sys integration   |
-| `prompt`   | no      | Interactive prompts        |
-
 ## Architecture
 
 - **`Consola`** — main thread-safe logger (`parking_lot::Mutex`). Methods: log types, reporters, tags, pause/resume, instance derivation.

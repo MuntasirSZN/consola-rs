@@ -51,7 +51,7 @@ jobs:
           components: clippy
           bins: cargo-hack,just
       - name: Run clippy
-        run: just lint-features
+        run: just lint-features && just lint
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

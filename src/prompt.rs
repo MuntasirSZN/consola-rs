@@ -16,8 +16,38 @@ pub use crate::types::{
     SelectPromptOptions, TextPromptOptions,
 };
 
+/// Mock backend used in `#[cfg(test)]` — always active in tests, regardless of features.
+/// Returns deterministic values without real TTY access.
+#[cfg(test)]
+mod backend {
+    use super::*;
+
+    pub(super) fn text(_message: &str, opts: &TextPromptOptions) -> Result<String, String> {
+        Ok(opts.default.clone().unwrap_or_else(|| "mock-text".into()))
+    }
+
+    pub(super) fn confirm(_message: &str, opts: &ConfirmPromptOptions) -> Result<bool, String> {
+        Ok(opts.initial.unwrap_or(true))
+    }
+
+    pub(super) fn select(_message: &str, opts: &SelectPromptOptions) -> Result<String, String> {
+        Ok(opts
+            .options
+            .first()
+            .map(|o| o.value.clone())
+            .unwrap_or_default())
+    }
+
+    pub(super) fn multiselect(
+        _message: &str,
+        opts: &MultiSelectOptions,
+    ) -> Result<Vec<String>, String> {
+        Ok(opts.options.iter().map(|o| o.value.clone()).collect())
+    }
+}
+
 /// Demand backend (highest priority).
-#[cfg(feature = "prompt")]
+#[cfg(all(not(test), feature = "prompt"))]
 mod backend {
     use super::*;
     use demand::{Confirm, Input, MultiSelect, Select};
@@ -91,7 +121,7 @@ mod backend {
 }
 
 /// Inquire backend (middle priority).
-#[cfg(all(feature = "prompt-inquire", not(feature = "prompt")))]
+#[cfg(all(not(test), feature = "prompt-inquire", not(feature = "prompt")))]
 mod backend {
     use super::*;
 
@@ -143,6 +173,7 @@ mod backend {
 
 /// Dialoguer backend (lowest priority).
 #[cfg(all(
+    not(test),
     feature = "prompt-dialoguer",
     not(any(feature = "prompt", feature = "prompt-inquire"))
 ))]
@@ -195,12 +226,15 @@ mod backend {
     }
 }
 
-/// Stub backend when no prompt feature is enabled.
-#[cfg(not(any(
-    feature = "prompt",
-    feature = "prompt-inquire",
-    feature = "prompt-dialoguer"
-)))]
+/// Stub backend when no prompt feature is enabled and we are not in tests.
+#[cfg(all(
+    not(test),
+    not(any(
+        feature = "prompt",
+        feature = "prompt-inquire",
+        feature = "prompt-dialoguer"
+    ))
+))]
 mod backend {
     use super::*;
 

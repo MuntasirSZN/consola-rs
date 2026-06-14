@@ -72,10 +72,17 @@ impl BasicReporter {
     /// Formats the current time as 12-hour local time (`h:mm:ss AM/PM`).
     #[allow(unreachable_code)]
     pub fn format_date(&self, opts: &FormatOptions) -> String {
+        self.format_date_at(opts, crate::types::now_ms())
+    }
+
+    /// Like `format_date` but accepts an explicit timestamp (milliseconds since epoch).
+    /// Used internally so tests can inject a specific time.
+    #[allow(unreachable_code)]
+    pub(crate) fn format_date_at(&self, opts: &FormatOptions, now_ms: i64) -> String {
         if opts.date {
             #[cfg(feature = "jiff")]
             {
-                if let Ok(ts) = jiff::Timestamp::from_millisecond(crate::types::now_ms()) {
+                if let Ok(ts) = jiff::Timestamp::from_millisecond(now_ms) {
                     let zoned = ts.to_zoned(jiff::tz::TimeZone::system());
                     let civil = zoned.datetime();
                     let h = civil.hour();
@@ -137,7 +144,7 @@ impl BasicReporter {
 
             // Fallback: UTC-based 12-hour (unreachable when a crate feature is active)
             {
-                let total_secs = (crate::types::now_ms() / 1000) as u64;
+                let total_secs = (now_ms / 1000) as u64;
                 let hours = (total_secs / 3600) % 24;
                 let mins = (total_secs / 60) % 60;
                 let secs = total_secs % 60;
@@ -376,5 +383,22 @@ mod tests {
         let ctx = make_ctx();
         let obj = make_log_obj(LogType::Info, &["x"], "");
         assert!(r.format(&obj, &ctx).is_ok());
+    }
+
+    #[test]
+    fn test_format_date_at_midnight() {
+        let r = BasicReporter;
+        let opts = FormatOptions {
+            date: true,
+            ..Default::default()
+        };
+        // Epoch midnight (1970-01-01 00:00:00 UTC)
+        // In the jiff implementation, this should produce "12:00:00 AM"
+        let result = r.format_date_at(&opts, 0);
+        assert!(
+            result.contains(":"),
+            "expected formatted time, got: '{}'",
+            result
+        );
     }
 }

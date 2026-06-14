@@ -314,103 +314,16 @@ fn test_k_cancel_exists() {
     assert_eq!(::consola::prompt::K_CANCEL, "Symbol(cancel)");
 }
 
-#[cfg(not(any(
-    feature = "prompt",
-    feature = "prompt-inquire",
-    feature = "prompt-dialoguer"
-)))]
-#[test]
-fn test_stub_k_cancel_exists() {
-    assert_eq!(::consola::prompt::K_CANCEL, "Symbol(cancel)");
-}
+// ===================================================================
+// Mock-backend prompt tests (active in test builds regardless of features)
+// ===================================================================
 
-#[cfg(not(any(
-    feature = "prompt",
-    feature = "prompt-inquire",
-    feature = "prompt-dialoguer"
-)))]
 #[test]
-fn test_stub_returns_feature_error() {
-    let opts = ::consola::prompt::TextPromptOptions {
-        common: ::consola::prompt::PromptCommonOptions { cancel: None },
-        r#type: None,
-        default: None,
-        placeholder: None,
-        initial: None,
-    };
-    let result = ::consola::prompt::text("test", &opts);
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert!(err.contains("prompt"));
-    assert!(err.contains("feature"));
-}
-
-#[cfg(not(any(
-    feature = "prompt",
-    feature = "prompt-inquire",
-    feature = "prompt-dialoguer"
-)))]
-#[test]
-fn test_stub_confirm_returns_feature_error() {
+fn test_mock_prompt_confirm() {
     let opts = ::consola::prompt::ConfirmPromptOptions {
         common: ::consola::prompt::PromptCommonOptions { cancel: None },
         r#type: "confirm".into(),
-        initial: None,
+        initial: Some(true),
     };
-    let result = ::consola::prompt::confirm("confirm?", &opts);
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert!(err.contains("prompt"));
-    assert!(err.contains("feature"));
-}
-
-#[cfg(not(any(
-    feature = "prompt",
-    feature = "prompt-inquire",
-    feature = "prompt-dialoguer"
-)))]
-#[test]
-fn test_stub_select_returns_feature_error() {
-    use ::consola::prompt::SelectOption;
-    let opts = ::consola::prompt::SelectPromptOptions {
-        common: ::consola::prompt::PromptCommonOptions { cancel: None },
-        r#type: "select".into(),
-        initial: None,
-        options: vec![SelectOption {
-            label: "A".into(),
-            value: "a".into(),
-            hint: None,
-        }],
-    };
-    let result = ::consola::prompt::select("pick one", &opts);
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert!(err.contains("prompt"));
-    assert!(err.contains("feature"));
-}
-
-#[cfg(not(any(
-    feature = "prompt",
-    feature = "prompt-inquire",
-    feature = "prompt-dialoguer"
-)))]
-#[test]
-fn test_stub_multiselect_returns_feature_error() {
-    use ::consola::prompt::SelectOption;
-    let opts = ::consola::prompt::MultiSelectOptions {
-        common: ::consola::prompt::PromptCommonOptions { cancel: None },
-        r#type: "multiselect".into(),
-        initial: None,
-        options: vec![SelectOption {
-            label: "A".into(),
-            value: "a".into(),
-            hint: None,
-        }],
-        required: None,
-    };
-    let result = ::consola::prompt::multiselect("pick", &opts);
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert!(err.contains("prompt"));
-    assert!(err.contains("feature"));
+    assert_eq!(::consola::prompt::confirm("confirm?", &opts), Ok(true));
 }

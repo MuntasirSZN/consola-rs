@@ -7,10 +7,6 @@ use consola::{
 };
 use parking_lot::Mutex;
 
-// ---------------------------------------------------------------------------
-// Test helpers
-// ---------------------------------------------------------------------------
-
 #[derive(Debug, Clone)]
 struct CaptureReporter {
     captured: Arc<Mutex<Vec<String>>>,
@@ -71,10 +67,6 @@ impl Reporter for ErrReporter {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Helper: create a Consola with CaptureReporter
-// ---------------------------------------------------------------------------
-
 fn make_consola() -> (consola::Consola, CaptureReporter) {
     let cr = CaptureReporter::new();
     let opts = ConsolaOptions {
@@ -92,10 +84,6 @@ fn make_consola_level(level: LogLevel) -> consola::Consola {
     };
     consola::Consola::new(opts)
 }
-
-// ===================================================================
-// new / level
-// ===================================================================
 
 #[test]
 fn test_new_creates_consola() {
@@ -132,10 +120,6 @@ fn test_level_default_info() {
     let c = consola::Consola::new(ConsolaOptions::default());
     assert_eq!(c.level(), log_levels::INFO);
 }
-
-// ===================================================================
-// reporters
-// ===================================================================
 
 #[test]
 fn test_add_reporter() {
@@ -229,10 +213,6 @@ fn test_reporter_error_does_not_panic() {
     assert!(result);
 }
 
-// ===================================================================
-// create / with_defaults / with_tag
-// ===================================================================
-
 #[test]
 fn test_create_with_higher_level() {
     let (c, _cr) = make_consola();
@@ -312,10 +292,6 @@ fn test_with_tag_chaining() {
     assert_eq!(cr.count(), 1);
 }
 
-// ===================================================================
-// pause / resume
-// ===================================================================
-
 #[test]
 fn test_pause_resume() {
     let (c, cr) = make_consola();
@@ -360,11 +336,6 @@ fn test_pause_idempotent() {
     c.resume_logs();
     // still works
 }
-
-// ===================================================================
-// type methods (fatal, error, warn, info, success, fail, ready,
-// start, box_, debug, trace, verbose, log) + raw variants
-// ===================================================================
 
 #[test]
 fn test_fatal() {
@@ -457,8 +428,6 @@ fn test_log_method() {
     assert!(cr.last().unwrap().contains("logmsg"));
 }
 
-// --- raw variants ---
-
 #[test]
 fn test_fatal_raw() {
     let (c, cr) = make_consola();
@@ -550,10 +519,6 @@ fn test_log_raw() {
     assert!(cr.last().unwrap().contains("raw log"));
 }
 
-// ===================================================================
-// log_obj
-// ===================================================================
-
 #[test]
 fn test_log_obj_basic() {
     let (c, cr) = make_consola();
@@ -596,10 +561,6 @@ fn test_log_obj_level_filtered() {
     }));
 }
 
-// ===================================================================
-// level filtering
-// ===================================================================
-
 #[test]
 fn test_info_filtered_at_warn() {
     let c = make_consola_level(log_levels::WARN);
@@ -637,10 +598,6 @@ fn test_info_passes_at_info_level() {
     assert!(c.info("info ok"));
 }
 
-// ===================================================================
-// throttle / dedup
-// ===================================================================
-
 #[test]
 fn test_throttle_does_not_filter_unique() {
     let (c, cr) = make_consola();
@@ -648,10 +605,6 @@ fn test_throttle_does_not_filter_unique() {
     c.info("second");
     assert_eq!(cr.count(), 2);
 }
-
-// Throttle uses Instant timing, so we set throttle to 0 to always dedup
-// identical messages (within the throttle window) and throttle_min to 1
-// so dedup kicks in immediately.
 
 #[test]
 fn test_throttle_repeats() {
@@ -704,10 +657,6 @@ fn test_throttle_min_threshold() {
     );
 }
 
-// ===================================================================
-// FormatOptions smoke test — just ensures the field round-trips
-// ===================================================================
-
 #[test]
 fn test_format_options_default() {
     let opts = FormatOptions::default();
@@ -734,10 +683,6 @@ fn test_reporter_clone_box() {
     );
 }
 
-// ===================================================================
-// Edge cases — empty message, empty args
-// ===================================================================
-
 #[test]
 fn test_info_empty_string() {
     let (c, _cr) = make_consola();
@@ -752,8 +697,219 @@ fn test_info_long_message() {
 }
 
 // ===================================================================
-// log trait integration
+// remove_reporter edge cases
 // ===================================================================
+
+#[test]
+fn test_remove_reporter_out_of_bounds() {
+    let cr = CaptureReporter::new();
+    let opts = ConsolaOptions {
+        reporters: vec![Box::new(cr.clone()) as Box<dyn Reporter>],
+        level: log_levels::VERBOSE,
+        ..ConsolaOptions::default()
+    };
+    let c = consola::Consola::new(opts);
+    // removing index 5 from a list with 1 element should panic
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        c.remove_reporter(5);
+    }));
+    assert!(result.is_err(), "expected panic on OOB remove");
+}
+
+#[test]
+fn test_remove_reporter_empty() {
+    let c = consola::Consola::new(ConsolaOptions::default());
+    // removing index 0 from an empty list should panic
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        c.remove_reporter(0);
+    }));
+    assert!(result.is_err(), "expected panic on remove from empty");
+}
+
+#[test]
+fn test_resume_without_pause() {
+    let (c, cr) = make_consola();
+    c.info("before");
+    let count_before = cr.count();
+    // resume when not paused should be a no-op
+    c.resume_logs();
+    // no crash and no extra emission
+    assert_eq!(cr.count(), count_before);
+}
+
+#[test]
+fn test_level_clamping_negative() {
+    let c = make_consola_level(log_levels::INFO);
+    c.set_level(-5);
+    assert_eq!(c.level(), 0, "-5 should clamp to 0");
+}
+
+#[test]
+fn test_level_clamping_max() {
+    let c = make_consola_level(log_levels::INFO);
+    c.set_level(255);
+    let clamped = c.level();
+    assert!(clamped <= 6, "255 should clamp to <=6, got {}", clamped);
+    assert_eq!(clamped, log_levels::TRACE, "255 should clamp to TRACE (5)");
+}
+
+// ===================================================================
+// log_obj_raw
+// ===================================================================
+
+#[test]
+fn test_log_obj_raw() {
+    let (c, cr) = make_consola();
+    assert!(c.log_obj_raw(&LogObjectInput {
+        r#type: Some(LogType::Info),
+        message: Some("raw log_obj".into()),
+        ..LogObjectInput::default()
+    }));
+    let last = cr.last().unwrap();
+    assert!(last.contains("raw log_obj"), "got: {last}");
+}
+
+#[test]
+fn test_log_all_types_at_verbose_raw() {
+    let (c, _cr) = make_consola();
+    assert!(c.fatal_raw("x"));
+    assert!(c.error_raw("x"));
+    assert!(c.warn_raw("x"));
+    assert!(c.info_raw("x"));
+    assert!(c.success_raw("x"));
+    assert!(c.fail_raw("x"));
+    assert!(c.ready_raw("x"));
+    assert!(c.start_raw("x"));
+    assert!(c.box_raw("x"));
+    assert!(c.debug_raw("x"));
+    assert!(c.trace_raw("x"));
+    assert!(c.verbose_raw("x"));
+    assert!(c.log_raw("x"));
+}
+
+// ===================================================================
+// create with reporters
+// ===================================================================
+
+#[test]
+fn test_create_without_reporters() {
+    let cr = CaptureReporter::new();
+    let opts = ConsolaOptions {
+        reporters: vec![Box::new(cr.clone()) as Box<dyn Reporter>],
+        level: log_levels::VERBOSE,
+        ..ConsolaOptions::default()
+    };
+    let c = consola::Consola::new(opts);
+    // child with empty reporters should inherit parent's reporters
+    let child = c.create(ConsolaOptions {
+        reporters: vec![],
+        level: log_levels::VERBOSE,
+        ..ConsolaOptions::default()
+    });
+    child.info("from child");
+    assert_eq!(cr.count(), 1, "child should inherit parent reporters");
+}
+
+#[test]
+fn test_create_with_new_reporters() {
+    let cr_parent = CaptureReporter::new();
+    let opts = ConsolaOptions {
+        reporters: vec![Box::new(cr_parent.clone()) as Box<dyn Reporter>],
+        level: log_levels::VERBOSE,
+        ..ConsolaOptions::default()
+    };
+    let c = consola::Consola::new(opts);
+
+    let cr_child = CaptureReporter::new();
+    let child = c.create(ConsolaOptions {
+        reporters: vec![Box::new(cr_child.clone()) as Box<dyn Reporter>],
+        level: log_levels::VERBOSE,
+        ..ConsolaOptions::default()
+    });
+    child.info("from child");
+    assert_eq!(cr_parent.count(), 0, "parent reporter should not fire");
+    assert_eq!(cr_child.count(), 1, "child reporter should fire");
+}
+
+#[test]
+fn test_level_filter_verbose_accepts_all() {
+    let (c, _cr) = make_consola();
+    assert!(c.fatal("x"));
+    assert!(c.error("x"));
+    assert!(c.warn("x"));
+    assert!(c.info("x"));
+    assert!(c.success("x"));
+    assert!(c.fail("x"));
+    assert!(c.ready("x"));
+    assert!(c.start("x"));
+    assert!(c.box_("x"));
+    assert!(c.debug("x"));
+    assert!(c.trace("x"));
+    assert!(c.verbose("x"));
+    assert!(c.log("x"));
+}
+
+#[test]
+fn test_consola_debug() {
+    let (c, _) = make_consola();
+    let s = format!("{:?}", c);
+    assert!(s.contains("Consola"), "got: {}", s);
+}
+
+#[test]
+fn test_create_with_message_default() {
+    let c = make_consola_level(log_levels::VERBOSE);
+    // create with default that has a message — triggers the message branch in create()
+    let sub = c.create(ConsolaOptions {
+        defaults: LogObjectInput::new().message("msg-default"),
+        ..ConsolaOptions::default()
+    });
+    assert!(sub.info("x"));
+}
+
+#[test]
+fn test_create_with_args_default() {
+    let c = make_consola_level(log_levels::VERBOSE);
+    // create with default args — triggers the args branch
+    let sub = c.create(ConsolaOptions {
+        defaults: LogObjectInput::new().args(vec!["a".into()]),
+        ..ConsolaOptions::default()
+    });
+    assert!(sub.info("x"));
+}
+
+#[test]
+fn test_create_with_additional_default() {
+    let c = make_consola_level(log_levels::VERBOSE);
+    // additional in defaults
+    let sub = c.create(ConsolaOptions {
+        defaults: LogObjectInput::new().additional("addl"),
+        ..ConsolaOptions::default()
+    });
+    assert!(sub.info("x"));
+}
+
+#[test]
+fn test_with_defaults_message_arg() {
+    let c = make_consola_level(log_levels::VERBOSE);
+    // with_defaults with message set
+    let sub = c.with_defaults(LogObjectInput::new().message("def-message"));
+    assert!(sub.info("x"));
+}
+
+#[test]
+fn test_with_defaults_args() {
+    let c = make_consola_level(log_levels::VERBOSE);
+    let sub = c.with_defaults(LogObjectInput::new().args(vec!["x".into()]));
+    assert!(sub.info("y"));
+}
+
+#[test]
+fn test_with_defaults_additional() {
+    let c = make_consola_level(log_levels::VERBOSE);
+    let sub = c.with_defaults(LogObjectInput::new().additional("addl"));
+    assert!(sub.info("z"));
+}
 
 #[cfg(feature = "log")]
 mod log_trait_tests {
@@ -839,11 +995,87 @@ mod log_trait_tests {
         let c = Consola::new(ConsolaOptions::default());
         log::Log::flush(&c);
     }
-}
 
-// ===================================================================
-// tracing subscriber integration
-// ===================================================================
+    #[test]
+    fn test_log_enabled_warn() {
+        let (c, _cr) = make_logger();
+        assert!(log::Log::enabled(
+            &c,
+            &log::Metadata::builder()
+                .level(log::Level::Warn)
+                .target("test")
+                .build(),
+        ));
+    }
+
+    #[test]
+    fn test_log_enabled_info() {
+        let (c, _cr) = make_logger();
+        assert!(log::Log::enabled(
+            &c,
+            &log::Metadata::builder()
+                .level(log::Level::Info)
+                .target("test")
+                .build(),
+        ));
+    }
+
+    #[test]
+    fn test_log_enabled_trace() {
+        let (c, _cr) = make_logger();
+        assert!(log::Log::enabled(
+            &c,
+            &log::Metadata::builder()
+                .level(log::Level::Trace)
+                .target("test")
+                .build(),
+        ));
+    }
+
+    /// Tests that `log::Log::log` dispatches properly for each level:
+    /// Warn, Debug, Trace — these hit branches that were at 0% coverage.
+    #[test]
+    fn test_log_log_warn() {
+        let (c, cr) = make_logger();
+        let record = log::Record::builder()
+            .args(format_args!("warn-msg"))
+            .level(log::Level::Warn)
+            .target("test")
+            .build();
+        log::Log::log(&c, &record);
+        assert_eq!(cr.count(), 1);
+        let last = cr.last().unwrap();
+        assert!(last.contains("warn-msg"), "got: {}", last);
+    }
+
+    #[test]
+    fn test_log_log_debug() {
+        let (c, cr) = make_logger();
+        let record = log::Record::builder()
+            .args(format_args!("dbg-msg"))
+            .level(log::Level::Debug)
+            .target("test")
+            .build();
+        log::Log::log(&c, &record);
+        assert_eq!(cr.count(), 1);
+        let last = cr.last().unwrap();
+        assert!(last.contains("dbg-msg"), "got: {}", last);
+    }
+
+    #[test]
+    fn test_log_log_trace() {
+        let (c, cr) = make_logger();
+        let record = log::Record::builder()
+            .args(format_args!("trace-msg"))
+            .level(log::Level::Trace)
+            .target("test")
+            .build();
+        log::Log::log(&c, &record);
+        assert_eq!(cr.count(), 1);
+        let last = cr.last().unwrap();
+        assert!(last.contains("trace-msg"), "got: {}", last);
+    }
+}
 
 #[cfg(feature = "tracing")]
 mod subscriber_tests {

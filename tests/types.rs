@@ -3,9 +3,9 @@
 use consola::{
     LogType, log_levels,
     types::{
-        ConfirmPromptOptions, ConsolaOptions, FormatOptions, LogContext, LogObject, LogObjectInput,
-        MultiSelectOptions, PromptCommonOptions, PromptOptions, Reporter, SelectOption,
-        SelectPromptOptions, TextPromptOptions,
+        ConfirmPromptOptions, ConsolaOptions, ErrorInfo, FormatOptions, LogContext, LogObject,
+        LogObjectInput, MultiSelectOptions, PromptCommonOptions, PromptOptions, Reporter,
+        SelectOption, SelectPromptOptions, TextPromptOptions,
     },
 };
 use std::sync::Arc;
@@ -471,5 +471,222 @@ fn prompt_options_clone() {
     match &cloned {
         PromptOptions::Select(s) => assert_eq!(s.r#type, "select"),
         _ => panic!("expected Select variant"),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// FormatOptions — terminal width coverage
+// ---------------------------------------------------------------------------
+
+#[test]
+fn format_options_terminal_width_default() {
+    let opts = FormatOptions::default();
+    // columns is platform-dependent; just verify it doesn't panic and is Some or None
+    match opts.columns {
+        Some(w) => assert!(w > 0),
+        None => { /* expected when not connected to a terminal */ }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ErrorInfo
+// ---------------------------------------------------------------------------
+
+#[test]
+fn error_info_default() {
+    let err = ErrorInfo::default();
+    assert_eq!(err.message, "");
+    assert!(err.stack.is_none());
+    assert!(err.backtrace.is_none());
+    assert!(err.cause.is_none());
+}
+
+#[test]
+fn error_info_with_fields() {
+    let err = ErrorInfo {
+        message: "err".into(),
+        stack: Some("trace".into()),
+        backtrace: None,
+        cause: None,
+    };
+    assert_eq!(err.message, "err");
+    assert_eq!(err.stack.as_deref(), Some("trace"));
+    assert!(err.backtrace.is_none());
+    assert!(err.cause.is_none());
+}
+
+#[test]
+fn error_info_nested_cause() {
+    let inner = ErrorInfo {
+        message: "inner error".into(),
+        stack: None,
+        backtrace: None,
+        cause: None,
+    };
+    let outer = ErrorInfo {
+        message: "outer error".into(),
+        stack: None,
+        backtrace: None,
+        cause: Some(Box::new(inner)),
+    };
+    assert_eq!(outer.message, "outer error");
+    assert!(outer.cause.is_some());
+    assert_eq!(outer.cause.as_ref().unwrap().message, "inner error");
+    assert!(outer.cause.as_ref().unwrap().cause.is_none());
+}
+
+// ---------------------------------------------------------------------------
+// LogObject — timestamp and tag
+// ---------------------------------------------------------------------------
+
+#[test]
+fn log_object_timestamp_ms() {
+    let obj = LogObject::new(LogType::Info);
+    assert!(
+        obj.timestamp_ms > 0,
+        "timestamp_ms should be positive, got {}",
+        obj.timestamp_ms
+    );
+}
+
+#[test]
+fn log_object_tag_default_empty() {
+    let obj = LogObject::new(LogType::Info);
+    assert_eq!(obj.tag, "", "default tag should be empty");
+}
+
+// ---------------------------------------------------------------------------
+// ConsolaOptions — level and throttle defaults
+// ---------------------------------------------------------------------------
+
+#[test]
+fn consola_options_level_default() {
+    assert_eq!(
+        ConsolaOptions::default().level,
+        log_levels::INFO,
+        "default level should be INFO"
+    );
+}
+
+#[test]
+fn consola_options_throttle_default() {
+    let opts = ConsolaOptions::default();
+    assert_eq!(opts.throttle, 1000);
+    assert_eq!(opts.throttle_min, 5);
+}
+
+// ---------------------------------------------------------------------------
+// Reporter trait object clone
+// ---------------------------------------------------------------------------
+
+#[test]
+fn reporter_trait_object_clone() {
+    let r: Box<dyn Reporter> = Box::new(TestReporter);
+    let cloned = r.clone();
+    let obj = LogObject::new(LogType::Info);
+    let ctx = LogContext {
+        options: Arc::new(ConsolaOptions::default()),
+    };
+    let original_result = r.format(&obj, &ctx).unwrap();
+    let cloned_result = cloned.format(&obj, &ctx).unwrap();
+    assert_eq!(original_result, cloned_result);
+}
+
+// ---------------------------------------------------------------------------
+// LogContext — options accessible
+// ---------------------------------------------------------------------------
+
+#[test]
+fn log_context_options_accessible() {
+    let options = Arc::new(ConsolaOptions::default());
+    let ctx = LogContext { options };
+    assert_eq!(ctx.options.level, log_levels::INFO);
+}
+
+// ---------------------------------------------------------------------------
+// LogObjectInput — builder chains
+// ---------------------------------------------------------------------------
+
+#[test]
+fn log_object_input_new_builder() {
+    let input = LogObjectInput::new().message("x").tag("t").title("title");
+    assert_eq!(input.message.as_deref(), Some("x"));
+    assert_eq!(input.tag.as_deref(), Some("t"));
+    assert_eq!(input.title.as_deref(), Some("title"));
+}
+
+#[test]
+fn log_object_input_all_fields() {
+    let input = LogObjectInput {
+        level: Some(log_levels::INFO),
+        r#type: Some(LogType::Info),
+        tag: Some("tag".into()),
+        message: Some("msg".into()),
+        additional: Some("addl".into()),
+        args: vec!["a".into(), "b".into()],
+        title: Some("title".into()),
+        badge: Some(true),
+        icon: Some("icon".into()),
+        style: Some("color:red".into()),
+        error: Some(ErrorInfo {
+            message: "err".into(),
+            stack: None,
+            backtrace: None,
+            cause: None,
+        }),
+    };
+    assert_eq!(input.level, Some(log_levels::INFO));
+    assert_eq!(input.r#type, Some(LogType::Info));
+    assert_eq!(input.tag.as_deref(), Some("tag"));
+    assert_eq!(input.message.as_deref(), Some("msg"));
+    assert_eq!(input.additional.as_deref(), Some("addl"));
+    assert_eq!(input.args, vec!["a", "b"]);
+    assert_eq!(input.title.as_deref(), Some("title"));
+    assert_eq!(input.badge, Some(true));
+    assert_eq!(input.icon.as_deref(), Some("icon"));
+    assert_eq!(input.style.as_deref(), Some("color:red"));
+    assert!(input.error.is_some());
+    assert_eq!(input.error.as_ref().unwrap().message, "err");
+    assert!(input.error.as_ref().unwrap().cause.is_none());
+}
+
+// ===================================================================
+// Edge cases — now_ms, terminal_width
+// ===================================================================
+
+#[test]
+fn test_now_ms_positive() {
+    // now_ms() is called internally when creating LogObject — verify the timestamp
+    let obj = LogObject::new(LogType::Info);
+    assert!(
+        obj.timestamp_ms > 1_700_000_000_000,
+        "timestamp {} should be > 2023",
+        obj.timestamp_ms
+    );
+    assert!(
+        obj.timestamp_ms < 9_999_999_999_999,
+        "timestamp {} should be reasonable",
+        obj.timestamp_ms
+    );
+}
+
+#[test]
+fn test_terminal_width_api() {
+    use consola::types::format::terminal_width;
+    // In test environments stdout is not a terminal, so this should return None.
+    let tw = terminal_width();
+    match tw {
+        None => {}
+        Some(w) => assert!(w > 0, "terminal width should be positive, got {w}"),
+    }
+}
+
+#[test]
+fn test_terminal_width_integration() {
+    use consola::types::format::terminal_width;
+    let tw = terminal_width();
+    match tw {
+        None => {}
+        Some(w) => assert!(w > 0, "terminal width should be positive, got {w}"),
     }
 }

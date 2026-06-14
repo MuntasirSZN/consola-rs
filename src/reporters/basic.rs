@@ -1,5 +1,4 @@
-// ─── BasicReporter ────────────────────────────────────────────────────────────
-// Pure formatter — no I/O. Returns Result<String, String> for the Consola to emit.
+//! BasicReporter — pure formatter — no I/O. Returns Result<String, String> for the Consola to emit.
 
 use crate::types::{ErrorInfo, FormatOptions, LogContext, LogObject, Reporter};
 

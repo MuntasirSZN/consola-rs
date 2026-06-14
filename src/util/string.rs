@@ -1,4 +1,4 @@
-// ─── String utilities: strip ANSI, alignment ──────────────────────────────────
+//! Utility functions for string manipulation.
 
 /// Strip ANSI escape codes from a string.
 pub fn strip_ansi(text: &str) -> String {

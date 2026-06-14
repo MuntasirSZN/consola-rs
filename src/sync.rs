@@ -51,3 +51,43 @@ mod imp {
 }
 
 pub use imp::Mutex;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mutex_basic_lock() {
+        let m = Mutex::new(42);
+        let guard = m.lock();
+        assert_eq!(*guard, 42);
+        drop(guard);
+    }
+
+    #[test]
+    fn test_mutex_mutate() {
+        let m = Mutex::new(String::new());
+        {
+            let mut guard = m.lock();
+            guard.push_str("hello");
+        }
+        assert_eq!(*m.lock(), "hello");
+    }
+
+    #[test]
+    fn test_mutex_debug() {
+        let m = Mutex::new(vec![1, 2, 3]);
+        let debug = format!("{:?}", m);
+        assert!(!debug.is_empty());
+    }
+
+    #[test]
+    fn test_mutex_multiple_locks() {
+        let m = Mutex::new(0);
+        for i in 0..10 {
+            let mut guard = m.lock();
+            *guard += i;
+        }
+        assert_eq!(*m.lock(), 45);
+    }
+}

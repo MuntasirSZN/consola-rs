@@ -1,7 +1,5 @@
 use crate::types::LogObjectInput;
 
-// ─── Log levels ───────────────────────────────────────────────────────────────
-
 /// Numeric log level. Higher values mean more verbosity.
 pub type LogLevel = i32;
 
@@ -38,8 +36,6 @@ pub mod log_levels {
     /// Verbose log level; maximum verbosity.
     pub const VERBOSE: LogLevel = LogLevel::MAX;
 }
-
-// ─── Log type ─────────────────────────────────────────────────────────────────
 
 /// Category of a log message, determining its label and default log level.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -145,8 +141,6 @@ pub const LOG_TYPES: &[LogType] = &[
     LogType::Verbose,
 ];
 
-// ─── Default level per type ───────────────────────────────────────────────────
-
 /// Returns the default numeric log level for a given [`LogType`].
 #[inline]
 pub fn log_type_level(ty: LogType) -> LogLevel {
@@ -179,8 +173,6 @@ pub fn log_type_defaults(ty: LogType) -> LogObjectInput {
     }
 }
 
-// ─── Normalize ────────────────────────────────────────────────────────────────
-
 /// Normalize an optional level / type to a concrete numeric level.
 pub fn normalize_log_level(input: Option<LogLevel>, default_level: LogLevel) -> LogLevel {
     let level = input.unwrap_or(default_level);
@@ -192,7 +184,6 @@ mod tests {
     use super::*;
     use std::str::FromStr;
 
-    // 1. Log level constants have correct values
     #[test]
     fn log_level_constant_values() {
         assert_eq!(log_levels::SILENT, LogLevel::MIN);
@@ -211,7 +202,6 @@ mod tests {
         assert_eq!(log_levels::VERBOSE, LogLevel::MAX);
     }
 
-    // 2. LogType::as_str() returns correct string for each variant
     #[test]
     fn log_type_as_str() {
         assert_eq!(LogType::Silent.as_str(), "silent");
@@ -230,7 +220,6 @@ mod tests {
         assert_eq!(LogType::Verbose.as_str(), "verbose");
     }
 
-    // 3. LogType::level() returns correct level for each variant
     #[test]
     fn log_type_level_method() {
         assert_eq!(LogType::Silent.level(), log_type_level(LogType::Silent));
@@ -249,7 +238,6 @@ mod tests {
         assert_eq!(LogType::Verbose.level(), log_type_level(LogType::Verbose));
     }
 
-    // 4. LogType::from_str() via FromStr trait
     #[test]
     fn log_type_from_str_ok() {
         assert_eq!(LogType::from_str("silent"), Ok(LogType::Silent));
@@ -275,7 +263,6 @@ mod tests {
         assert_eq!(LogType::from_str("INFO"), Err(()));
     }
 
-    // Also test the parse() method via FromStr
     #[test]
     fn log_type_parse() {
         assert_eq!("info".parse::<LogType>(), Ok(LogType::Info));
@@ -283,7 +270,6 @@ mod tests {
         assert_eq!("nope".parse::<LogType>(), Err(()));
     }
 
-    // 5. log_type_level() returns correct values for all types
     #[test]
     fn log_type_level_fn() {
         assert_eq!(log_type_level(LogType::Silent), -1);
@@ -302,7 +288,6 @@ mod tests {
         assert_eq!(log_type_level(LogType::Verbose), log_levels::VERBOSE);
     }
 
-    // 6. LOG_TYPES slice — correct order and count
     #[test]
     fn log_types_slice() {
         assert_eq!(LOG_TYPES.len(), 14);
@@ -325,7 +310,6 @@ mod tests {
         assert_eq!(LOG_TYPES, &expected[..]);
     }
 
-    // 7. log_type_defaults() returns LogObjectInput with correct type and level
     #[test]
     fn log_type_defaults_fn() {
         for ty in LOG_TYPES {
@@ -357,7 +341,6 @@ mod tests {
         }
     }
 
-    // 8. normalize_log_level()
     #[test]
     fn normalize_log_level_values() {
         // None defaults to info level (3)

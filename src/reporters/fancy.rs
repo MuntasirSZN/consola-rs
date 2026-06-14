@@ -1,5 +1,4 @@
-// ─── FancyReporter ───────────────────────────────────────────────────────────
-// Pure formatter — no I/O. Colors via `anstyle` crate.
+//! FancyReporter — pure formatter — no I/O. Colors via `anstyle` crate.
 
 use std::sync::LazyLock;
 

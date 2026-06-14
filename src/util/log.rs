@@ -1,4 +1,4 @@
-// ─── Log object detection ─────────────────────────────────────────────────────
+//! Utility functions for detecting log object inputs.
 
 use crate::types::LogObjectInput;
 

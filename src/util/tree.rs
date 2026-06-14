@@ -1,5 +1,4 @@
-// ─── Tree formatting ─────────────────────────────────────────────────────────
-// Ported from consola-js src/utils/tree.ts
+//! Utility functions for formatting tree structures.
 
 use crate::util::color::colorize;
 

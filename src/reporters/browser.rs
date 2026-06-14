@@ -158,7 +158,7 @@ impl BrowserReporter {
         if badge.is_empty() {
             msg
         } else {
-            format!("[{}] {}", badge, msg)
+            format!("{} {}", badge, msg)
         }
     }
 }
@@ -235,7 +235,7 @@ mod tests {
         let ctx = make_ctx();
         let obj = make_log_obj(LogType::Info, &["hello"], "mytag", 3);
         let result = r.format(&obj, &ctx).unwrap();
-        assert_eq!(result, "[mytag:info] hello");
+        assert_eq!(result, "mytag:info hello");
     }
 
     #[test]
@@ -244,7 +244,7 @@ mod tests {
         let ctx = make_ctx();
         let obj = make_log_obj(LogType::Info, &["hello"], "", 3);
         let result = r.format(&obj, &ctx).unwrap();
-        assert_eq!(result, "[info] hello");
+        assert_eq!(result, "info hello");
     }
 
     #[test]
@@ -253,7 +253,7 @@ mod tests {
         let ctx = make_ctx();
         let obj = make_log_obj(LogType::Log, &["hello"], "mytag", 2);
         let result = r.format(&obj, &ctx).unwrap();
-        assert_eq!(result, "[mytag] hello");
+        assert_eq!(result, "mytag hello");
     }
 
     #[test]
@@ -262,7 +262,7 @@ mod tests {
         let ctx = make_ctx();
         let obj = make_log_obj(LogType::Error, &["fail"], "", 0);
         let result = r.format(&obj, &ctx).unwrap();
-        assert_eq!(result, "[error] fail");
+        assert_eq!(result, "error fail");
     }
 
     #[test]
@@ -271,7 +271,7 @@ mod tests {
         let ctx = make_ctx();
         let obj = make_log_obj(LogType::Info, &[], "", 3);
         let result = r.format(&obj, &ctx).unwrap();
-        assert_eq!(result, "[info] ");
+        assert_eq!(result, "info ");
     }
 
     #[test]

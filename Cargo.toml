@@ -24,6 +24,7 @@ jiff = { version = "0.2", optional = true, features = ["js"] }
 chrono = { version = "0.4", optional = true }
 log = { version = "0.4", optional = true }
 tracing = { version = "0.1", optional = true }
+tracing-core = { version = "0.1", optional = true }
 backtrace = { version = "0.3", optional = true }
 web-sys = { version = "0.3", optional = true, features = ["console", "Window"] }
 wasm-bindgen = { version = "0.2", optional = true }
@@ -38,7 +39,7 @@ jiff = ["dep:jiff"]
 chrono = ["dep:chrono"]
 time = ["dep:time"]
 log = ["dep:log"]
-tracing = ["dep:tracing"]
+tracing = ["dep:tracing", "dep:tracing-core"]
 backtrace = ["dep:backtrace"]
 browser = ["dep:web-sys", "dep:wasm-bindgen"]
 parking_lot = ["dep:parking_lot"]

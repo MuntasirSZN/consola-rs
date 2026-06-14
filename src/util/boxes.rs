@@ -1,5 +1,4 @@
-// ─── Box drawing ─────────────────────────────────────────────────────────────
-// Ported from consola-js src/utils/box.ts
+//! Box drawing utilities.
 
 use crate::util::color::get_color;
 use crate::util::string::string_width;

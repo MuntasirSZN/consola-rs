@@ -1,4 +1,4 @@
-// ─── ANSI color support via anstyle ──────────────────────────────────────────
+//! ANSI color support via `anstyle` crate.
 
 use std::sync::OnceLock;
 
@@ -266,8 +266,6 @@ pub fn bg_white(text: &str) -> String {
     apply(text, &[], &["bg_white"])
 }
 
-// ─── Lookup ───────────────────────────────────────────────────────────────────
-
 /// Look up a color function by name.
 pub fn get_color(name: &str) -> fn(&str) -> String {
     match name {
@@ -363,8 +361,6 @@ mod tests {
             assert_ansi_or_plain(&result, input);
         }
     }
-
-    // ── 1. All color functions produce ANSI-escaped output ──────────────────
 
     #[test]
     fn test_foreground_colors() {
@@ -615,8 +611,6 @@ mod tests {
         assert_ansi_or_plain(&result, "hello");
     }
 
-    // ── 2. Starts with \x1b[ and ends with \x1b[0m ────────────────────────
-
     #[test]
     fn test_output_starts_with_escape_and_ends_with_reset() {
         enable_colors();
@@ -676,8 +670,6 @@ mod tests {
         );
     }
 
-    // ── 3–5. get_color ────────────────────────────────────────────────────
-
     #[test]
     fn test_get_color_known() {
         enable_colors();
@@ -700,8 +692,6 @@ mod tests {
         assert_eq!(f("hello"), "hello", "empty string returns identity");
     }
 
-    // ── 6–7. colorize ─────────────────────────────────────────────────────
-
     #[test]
     fn test_colorize_known() {
         enable_colors();
@@ -717,8 +707,6 @@ mod tests {
             "colorize with unknown name returns unchanged"
         );
     }
-
-    // ── 8–10. set_color_enabled / color_enabled ────────────────────────────
 
     #[test]
     fn test_color_enabled_toggle() {
@@ -763,8 +751,6 @@ mod tests {
         // Just call it — doesn't assert a particular value, just that it runs.
         let _state = color_enabled();
     }
-
-    // ── get_color("reset") ────────────────────────────────────────────────
 
     #[test]
     fn test_get_color_reset() {

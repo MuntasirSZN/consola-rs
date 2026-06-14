@@ -1,10 +1,6 @@
-// ─── Common types ─────────────────────────────────────────────────────────────
-
 use std::sync::Arc;
 
 use crate::constants::{LogLevel, LogType, log_levels};
-
-// ─── Format options ───────────────────────────────────────────────────────────
 
 /// Controls formatting behavior of log output.
 #[derive(Debug, Clone)]
@@ -51,8 +47,6 @@ pub fn terminal_width() -> Option<u16> {
     }
 }
 
-// ─── Error info ────────────────────────────────────────────────────────────────
-
 /// Information about an error for rich error-chain formatting.
 #[derive(Debug, Clone, Default)]
 pub struct ErrorInfo {
@@ -65,8 +59,6 @@ pub struct ErrorInfo {
     /// The cause of this error (next in the chain).
     pub cause: Option<Box<ErrorInfo>>,
 }
-
-// ─── Log object input (partial, for defaults / user-provided) ─────────────────
 
 /// Partial log input used to construct a fully resolved `LogObject`.
 ///
@@ -86,7 +78,6 @@ pub struct LogObjectInput {
     /// Additional positional arguments for richer formatting.
     pub args: Vec<String>,
 
-    // Extra fields used by reporters
     /// Optional title displayed prominently by some reporters.
     pub title: Option<String>,
     /// Whether to render a badge indicator.
@@ -148,8 +139,6 @@ impl LogObjectInput {
     }
 }
 
-// ─── Log object (fully resolved, passed to reporters) ─────────────────────────
-
 /// A fully resolved log entry passed to reporters for formatting.
 ///
 /// Constructed from `LogObjectInput` merged with the consola instance defaults.
@@ -169,8 +158,6 @@ pub struct LogObject {
     pub args: Vec<String>,
     /// Milliseconds since Unix epoch.
     pub timestamp_ms: i64,
-
-    // Extra fields
     /// Optional title displayed prominently by some reporters.
     pub title: Option<String>,
     /// Whether to render a badge indicator.
@@ -255,8 +242,6 @@ pub(crate) fn now_ms() -> i64 {
         .unwrap_or(0)
 }
 
-// ─── Reporter trait (pure format, no I/O) ────────────────────────────────────
-
 /// Context passed to reporters alongside the log object.
 #[derive(Debug, Clone)]
 pub struct LogContext {
@@ -279,8 +264,6 @@ impl Clone for Box<dyn Reporter> {
         self.clone_box()
     }
 }
-
-// ─── Prompt-related types ─────────────────────────────────────────────────────
 
 /// A single selectable option in a prompt menu.
 #[derive(Debug, Clone)]
@@ -367,8 +350,6 @@ pub enum PromptOptions {
     MultiSelect(MultiSelectOptions),
 }
 
-// ─── Consola options ──────────────────────────────────────────────────────────
-
 /// Configuration options for a `Consola` instance.
 #[derive(Debug)]
 pub struct ConsolaOptions {
@@ -419,8 +400,6 @@ mod tests {
     use crate::constants::{LogType, log_levels};
     use crate::types::*;
 
-    // ─── Helper Reporter for trait tests ────────────────────────────────────
-
     #[derive(Debug, Clone)]
     struct TestReporter;
 
@@ -434,8 +413,6 @@ mod tests {
         }
     }
 
-    // ─── 1. FormatOptions default ───────────────────────────────────────────
-
     #[test]
     fn format_options_default() {
         let opts = FormatOptions::default();
@@ -445,8 +422,6 @@ mod tests {
         assert!(opts.compact);
         assert_eq!(opts.error_level, 0);
     }
-
-    // ─── 2. LogObjectInput builder methods ──────────────────────────────────
 
     #[test]
     fn log_object_input_type_() {
@@ -499,8 +474,6 @@ mod tests {
         assert_eq!(input.args, vec!["x"]);
     }
 
-    // ─── 3. LogObject construction ──────────────────────────────────────────
-
     #[test]
     fn log_object_new() {
         let obj = LogObject::new(LogType::Info);
@@ -530,8 +503,6 @@ mod tests {
             assert_eq!(obj.r#type, *ty);
         }
     }
-
-    // ─── 4. LogObject helper methods ────────────────────────────────────────
 
     #[cfg(feature = "jiff")]
     #[test]
@@ -569,8 +540,6 @@ mod tests {
         }
     }
 
-    // ─── 5. ConsolaOptions — Debug and Clone ────────────────────────────────
-
     #[test]
     fn consola_options_debug() {
         let opts = ConsolaOptions::default();
@@ -597,8 +566,6 @@ mod tests {
         assert_eq!(opts.throttle, 1000);
         assert_eq!(opts.throttle_min, 5);
     }
-
-    // ─── 6. Reporter trait ──────────────────────────────────────────────────
 
     #[test]
     fn reporter_trait_object_safety() {
@@ -639,8 +606,6 @@ mod tests {
         );
     }
 
-    // ─── 7. LogContext ──────────────────────────────────────────────────────
-
     #[test]
     fn log_context_new() {
         let opts = ConsolaOptions::default();
@@ -661,8 +626,6 @@ mod tests {
         let debug_str = format!("{:?}", cloned);
         assert!(!debug_str.is_empty());
     }
-
-    // ─── 8. SelectOption ────────────────────────────────────────────────────
 
     #[test]
     fn select_option_new() {
@@ -700,8 +663,6 @@ mod tests {
         let debug_str = format!("{:?}", opt);
         assert!(!debug_str.is_empty());
     }
-
-    // ─── 9. Prompt types ────────────────────────────────────────────────────
 
     #[test]
     fn prompt_common_options_default() {
@@ -813,8 +774,6 @@ mod tests {
         assert_eq!(opts.options.len(), 2);
         assert_eq!(opts.required, Some(true));
     }
-
-    // ─── 10. PromptOptions enum ──────────────────────────────────────────────
 
     #[test]
     fn prompt_options_match_text() {

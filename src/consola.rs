@@ -1,13 +1,14 @@
-// Emission goes through `log` or `tracing` crates. There is no IO.
+//! Emission goes through `log` or `tracing` crates. There is no IO.
 
 use std::time::Instant;
+
+#[cfg(feature = "tracing")]
+use std::collections::HashMap;
 
 use crate::sync::Mutex;
 
 use crate::constants::{LogLevel, LogType, log_levels, log_type_defaults, normalize_log_level};
 use crate::types::{ConsolaOptions, LogContext, LogObject, LogObjectInput, Reporter};
-
-// ─── Internal state ───────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
 struct LastLogInfo {
@@ -22,9 +23,19 @@ struct ConsolaState {
     paused: bool,
     queue: Vec<(LogObjectInput, Vec<String>, bool)>,
     last_log: Option<LastLogInfo>,
+    #[cfg(feature = "tracing")]
+    span_id_counter: u64,
+    #[cfg(feature = "tracing")]
+    span_stack: Vec<u64>,
+    #[cfg(feature = "tracing")]
+    span_ref_counts: HashMap<u64, u64>,
+    #[cfg(feature = "tracing")]
+    span_metas: HashMap<u64, &'static tracing::Metadata<'static>>,
+    #[cfg(feature = "tracing")]
+    span_fields: HashMap<u64, Vec<(String, String)>>,
+    #[cfg(feature = "tracing")]
+    span_follows_from: HashMap<u64, Vec<u64>>,
 }
-
-// ─── Consola ──────────────────────────────────────────────────────────────────
 
 /// The main logger struct. Thread-safe; all methods take `&self`.
 pub struct Consola {
@@ -41,8 +52,6 @@ impl std::fmt::Debug for Consola {
 }
 
 impl Consola {
-    // ── Construction ──────────────────────────────────────────────────────
-
     /// Create a new `Consola` instance with the given options.
     pub fn new(options: ConsolaOptions) -> Self {
         Self {
@@ -50,8 +59,6 @@ impl Consola {
             state: Mutex::new(ConsolaState::default()),
         }
     }
-
-    // ── Level ─────────────────────────────────────────────────────────────
 
     /// Returns the current log level.
     pub fn level(&self) -> LogLevel {
@@ -63,8 +70,6 @@ impl Consola {
         let normalized = normalize_log_level(Some(level), log_levels::INFO);
         self.options.lock().level = normalized;
     }
-
-    // ── Reporters ─────────────────────────────────────────────────────────
 
     /// Add a reporter to the list of active reporters.
     pub fn add_reporter(&self, reporter: Box<dyn Reporter>) {
@@ -85,8 +90,6 @@ impl Consola {
     pub fn set_reporters(&self, reporters: Vec<Box<dyn Reporter>>) {
         self.options.lock().reporters = reporters;
     }
-
-    // ── Instance creation ─────────────────────────────────────────────────
 
     /// Create a new `Consola` instance by merging the current options with the given overrides.
     pub fn create(&self, options_overrides: ConsolaOptions) -> Self {
@@ -165,8 +168,6 @@ impl Consola {
         })
     }
 
-    // ── Pause / Resume ────────────────────────────────────────────────────
-
     /// Pause all logging. Logs are queued and will be flushed on [`resume_logs`].
     pub fn pause_logs(&self) {
         self.state.lock().paused = true;
@@ -183,8 +184,6 @@ impl Consola {
             self._log_fn(&defaults, &args, is_raw);
         }
     }
-
-    // ── Internal logging ──────────────────────────────────────────────────
 
     fn _log_fn(&self, input_defaults: &LogObjectInput, args: &[String], is_raw: bool) -> bool {
         // Read config once
@@ -353,12 +352,7 @@ impl Consola {
             writeln!(stdout, "{message}")
         }
     }
-
-    // ── Public log-type methods ───────────────────────────────────────────
 }
-
-// ─── Log crate integration ──────────────────────────────────────────────────
-// Consola implements `log::Log` to act as a log sink.
 
 #[cfg(feature = "log")]
 impl log::Log for Consola {
@@ -420,9 +414,6 @@ impl log::Log for Consola {
     }
 }
 
-// ─── Tracing crate integration ──────────────────────────────────────────────
-// Consola implements `tracing::Subscriber` to act as a tracing sink.
-
 #[cfg(feature = "tracing")]
 struct ConsolaVisitor<'a> {
     message: Option<String>,
@@ -435,6 +426,41 @@ impl<'a> tracing::field::Visit for ConsolaVisitor<'a> {
         if field.name() == "message" {
             self.message = Some(format!("{:?}", value));
         }
+    }
+}
+
+/// Collects all field values on a span (unlike [`ConsolaVisitor`] which
+/// extracts only the single `message` field from an event).
+#[cfg(feature = "tracing")]
+struct SpanFieldCollector {
+    fields: Vec<(String, String)>,
+}
+
+#[cfg(feature = "tracing")]
+impl tracing::field::Visit for SpanFieldCollector {
+    fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
+        self.fields
+            .push((field.name().to_string(), format!("{:?}", value)));
+    }
+
+    fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
+        self.fields
+            .push((field.name().to_string(), value.to_string()));
+    }
+
+    fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
+        self.fields
+            .push((field.name().to_string(), value.to_string()));
+    }
+
+    fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
+        self.fields
+            .push((field.name().to_string(), value.to_string()));
+    }
+
+    fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
+        self.fields
+            .push((field.name().to_string(), value.to_string()));
     }
 }
 
@@ -451,13 +477,61 @@ impl tracing::Subscriber for Consola {
         level <= self.level()
     }
 
-    fn new_span(&self, _span: &tracing::span::Attributes<'_>) -> tracing::span::Id {
-        tracing::span::Id::from_u64(1)
+    fn max_level_hint(&self) -> Option<tracing::metadata::LevelFilter> {
+        let raw = self.level();
+        // Negative levels (e.g. SILENT = i32::MIN) mean no events pass;
+        // see `enabled()` which compares `level <= raw`.
+        if raw < 0 {
+            return Some(tracing::metadata::LevelFilter::OFF);
+        }
+        let filter = match raw.min(5) {
+            0 => tracing::metadata::LevelFilter::ERROR,
+            1 => tracing::metadata::LevelFilter::WARN,
+            2 | 3 => tracing::metadata::LevelFilter::INFO,
+            4 => tracing::metadata::LevelFilter::DEBUG,
+            _ => tracing::metadata::LevelFilter::TRACE,
+        };
+        Some(filter)
     }
 
-    fn record(&self, _span: &tracing::span::Id, _values: &tracing::span::Record<'_>) {}
+    fn new_span(&self, attrs: &tracing::span::Attributes<'_>) -> tracing::span::Id {
+        let mut state = self.state.lock();
+        state.span_id_counter += 1;
+        let id = state.span_id_counter;
+        state.span_ref_counts.insert(id, 1);
+        state.span_metas.insert(id, attrs.metadata());
 
-    fn record_follows_from(&self, _span: &tracing::span::Id, _follows: &tracing::span::Id) {}
+        // Record initial field values from the span macro.
+        let mut collector = SpanFieldCollector { fields: Vec::new() };
+        attrs.record(&mut collector);
+        if !collector.fields.is_empty() {
+            state.span_fields.insert(id, collector.fields);
+        }
+
+        tracing::span::Id::from_u64(id)
+    }
+
+    fn record(&self, span: &tracing::span::Id, values: &tracing::span::Record<'_>) {
+        let mut collector = SpanFieldCollector { fields: Vec::new() };
+        values.record(&mut collector);
+        if !collector.fields.is_empty() {
+            let mut state = self.state.lock();
+            state
+                .span_fields
+                .entry(span.into_u64())
+                .or_default()
+                .extend(collector.fields);
+        }
+    }
+
+    fn record_follows_from(&self, span: &tracing::span::Id, follows: &tracing::span::Id) {
+        let mut state = self.state.lock();
+        state
+            .span_follows_from
+            .entry(span.into_u64())
+            .or_default()
+            .push(follows.into_u64());
+    }
 
     fn event(&self, event: &tracing::Event<'_>) {
         let raw_level = match *event.metadata().level() {
@@ -478,7 +552,30 @@ impl tracing::Subscriber for Consola {
         event.record(&mut visitor);
 
         let message = visitor.message.unwrap_or_default();
-        let tag = event.metadata().target().to_string();
+        let base_tag = event.metadata().target().to_string();
+
+        // Collect current span context (name + recorded fields) without
+        // holding the lock across the remaining work.
+        let (tag, span_field_args) = {
+            let state = self.state.lock();
+            let top = state.span_stack.last().copied();
+            if let Some(top) = top {
+                let span_name = state.span_metas.get(&top).map(|m| m.name().to_string());
+                let span_fields = state.span_fields.get(&top).cloned().unwrap_or_default();
+                let tag = match span_name {
+                    Some(name) => format!("{}::{}", name, base_tag),
+                    None => base_tag,
+                };
+                let args: Vec<String> = span_fields
+                    .into_iter()
+                    .filter(|(k, _)| k != "message")
+                    .map(|(k, v)| format!("{}={}", k, v))
+                    .collect();
+                (tag, args)
+            } else {
+                (base_tag, Vec::new())
+            }
+        };
 
         let mut log_obj = LogObject::new(LogType::Log);
         log_obj.level = raw_level;
@@ -490,7 +587,14 @@ impl tracing::Subscriber for Consola {
             _ => LogType::Trace,
         };
         log_obj.tag = tag;
-        log_obj.args = vec![message.clone()];
+        log_obj.args = if span_field_args.is_empty() {
+            vec![message]
+        } else {
+            let mut args = Vec::with_capacity(span_field_args.len() + 1);
+            args.push(message);
+            args.extend(span_field_args);
+            args
+        };
 
         #[cfg(feature = "backtrace")]
         if raw_level == 0 {
@@ -506,12 +610,63 @@ impl tracing::Subscriber for Consola {
         self._emit(&log_obj);
     }
 
-    fn enter(&self, _span: &tracing::span::Id) {}
+    fn enter(&self, span: &tracing::span::Id) {
+        let mut state = self.state.lock();
+        state.span_stack.push(span.into_u64());
+    }
 
-    fn exit(&self, _span: &tracing::span::Id) {}
+    fn exit(&self, span: &tracing::span::Id) {
+        let mut state = self.state.lock();
+        // Only pop if the top of the stack matches the exiting span.
+        if state.span_stack.last() == Some(&span.into_u64()) {
+            state.span_stack.pop();
+        }
+    }
+
+    fn clone_span(&self, id: &tracing::span::Id) -> tracing::span::Id {
+        let mut state = self.state.lock();
+        if let Some(count) = state.span_ref_counts.get_mut(&id.into_u64()) {
+            *count += 1;
+        }
+        id.clone()
+    }
+
+    fn current_span(&self) -> tracing_core::span::Current {
+        let state = self.state.lock();
+        let id_raw = state.span_stack.last().copied();
+        if let Some(id_raw) = id_raw
+            && let Some(&meta) = state.span_metas.get(&id_raw)
+        {
+            let current = tracing_core::span::Current::new(
+                // SAFETY: id_raw was produced by new_span (starts at 1).
+                tracing::span::Id::from_u64(id_raw),
+                meta,
+            );
+            drop(state);
+            return current;
+        }
+        drop(state);
+        tracing_core::span::Current::none()
+    }
+
+    fn try_close(&self, id: tracing::span::Id) -> bool {
+        let mut state = self.state.lock();
+        let raw = id.into_u64();
+        if let Some(count) = state.span_ref_counts.get_mut(&raw) {
+            *count = count.saturating_sub(1);
+            if *count == 0 {
+                state.span_ref_counts.remove(&raw);
+                state.span_metas.remove(&raw);
+                state.span_fields.remove(&raw);
+                state.span_follows_from.remove(&raw);
+                // Clean up from stack if still present.
+                state.span_stack.retain(|&s| s != raw);
+                return true;
+            }
+        }
+        false
+    }
 }
-
-// ─── Generate log-type methods ───────────────────────────────────────────────
 
 macro_rules! consola_methods {
     ($($method:ident, $raw_method:ident, $Type:ident;)*) => {
@@ -586,8 +741,6 @@ impl Consola {
     }
 }
 
-// ─── Tests ────────────────────────────────────────────────────────────────────
-
 #[cfg(test)]
 mod tests {
     use std::sync::{Arc, Mutex};
@@ -598,8 +751,6 @@ mod tests {
     };
 
     use super::Consola;
-
-    // ── Helper reporter that records every formatted string ────────────────
 
     #[derive(Debug, Clone)]
     struct CaptureReporter {
@@ -648,8 +799,6 @@ mod tests {
         }
     }
 
-    // ── Helper reporter that always fails ──────────────────────────────────
-
     #[derive(Debug, Clone)]
     struct ErrReporter;
 
@@ -662,8 +811,6 @@ mod tests {
             Box::new(Self)
         }
     }
-
-    // ── 1. new() ────────────────────────────────────────────────────────────
 
     #[test]
     fn test_new_default_level() {
@@ -712,8 +859,6 @@ mod tests {
         assert!(c.verbose("x"));
     }
 
-    // ── 2. level() / set_level() ───────────────────────────────────────────
-
     #[test]
     fn test_level_get_set_all() {
         let c = Consola::new(ConsolaOptions::default());
@@ -753,18 +898,6 @@ mod tests {
         assert_eq!(c.level(), log_levels::DEBUG);
         c.set_level(log_levels::INFO);
         assert_eq!(c.level(), log_levels::INFO);
-    }
-
-    // ── 3. Reporters ───────────────────────────────────────────────────────
-
-    #[test]
-    fn test_add_reporter() {
-        let r = CaptureReporter::new();
-        let c = Consola::new(ConsolaOptions::default());
-        c.add_reporter(Box::new(r.clone()));
-        assert!(c.info("msg"));
-        assert_eq!(r.count(), 1);
-        assert!(r.last().unwrap().contains("msg"));
     }
 
     #[test]
@@ -828,8 +961,6 @@ mod tests {
         assert_eq!(r1.count(), 0); // replaced
         assert_eq!(r2.count(), 1);
     }
-
-    // ── 4. create() with overrides ─────────────────────────────────────────
 
     #[test]
     fn test_create_with_level_override() {
@@ -907,13 +1038,6 @@ mod tests {
         assert!(last.contains("err"), "got: {}", last);
     }
 
-    // ── 5. with_defaults() ─────────────────────────────────────────────────
-
-    // Note: with_defaults stores defaults in ConsolaOptions.defaults, but
-    // the log methods (info, warn, etc.) do NOT merge those defaults when
-    // constructing the LogObject. The tag/level/message defaults are stored
-    // for create() chaining but not applied automatically.
-
     #[test]
     fn test_with_defaults_returns_working_instance() {
         let r = CaptureReporter::new();
@@ -966,14 +1090,6 @@ mod tests {
         assert_eq!(r.count(), 1);
     }
 
-    // ── 6. with_tag() ──────────────────────────────────────────────────────
-
-    // Note: with_tag stores the tag in ConsolaOptions.defaults.tag, but
-    // the log methods (info, warn, etc.) do NOT merge defaults from options.
-    // They only use the per-call LogObjectInput. So tags are stored but
-    // currently not applied when calling generated log methods directly.
-    // We test that the returned Consola works and doesn't panic.
-
     #[test]
     fn test_with_tag_returns_working_instance() {
         let r = CaptureReporter::new();
@@ -997,8 +1113,6 @@ mod tests {
         assert!(tagged.info("nested"));
         assert_eq!(r.count(), 1);
     }
-
-    // ── 7. pause_logs() / resume_logs() ────────────────────────────────────
 
     #[test]
     fn test_pause_resume_queues_and_flushes() {
@@ -1065,8 +1179,6 @@ mod tests {
         assert!(c.info("after resume"));
         assert_eq!(r.count(), 1);
     }
-
-    // ── 8. log() / log_raw() / log_obj() / log_obj_raw() ──────────────────
 
     #[test]
     fn test_log_string_basic() {
@@ -1150,8 +1262,6 @@ mod tests {
         });
         assert!(!c.log("should be filtered")); // LOG level = 2 > WARN level = 1
     }
-
-    // ── 9. All 14 log-type methods ────────────────────────────────────────
 
     #[test]
     fn test_all_type_methods_info() {
@@ -1333,8 +1443,6 @@ mod tests {
         assert_eq!(r.count(), 1);
     }
 
-    // ── 10. Raw variants ───────────────────────────────────────────────────
-
     #[test]
     fn test_info_raw() {
         let r = CaptureReporter::new();
@@ -1480,8 +1588,6 @@ mod tests {
         assert!(r.last().unwrap().contains("raw-verbose"));
     }
 
-    // ── 11. Throttle dedup ─────────────────────────────────────────────────
-
     #[test]
     fn test_throttle_dedup_same_message() {
         let r = CaptureReporter::new();
@@ -1583,8 +1689,6 @@ mod tests {
         assert_eq!(r.count(), 4);
     }
 
-    // ── 12. Level filtering ────────────────────────────────────────────────
-
     #[test]
     fn test_level_filter_below_info() {
         let c = Consola::new(ConsolaOptions {
@@ -1663,8 +1767,6 @@ mod tests {
         assert!(!c.debug("debug"));
     }
 
-    // ── 13. Reporter errors caught ─────────────────────────────────────────
-
     #[test]
     fn test_reporter_error_during_emit() {
         // An ErrReporter always returns Err from format().
@@ -1695,12 +1797,6 @@ mod tests {
         });
         assert!(c.info("will error"));
     }
-
-    // ── 14. with_defaults + tag order ──────────────────────────────────────
-
-    // The create() method merges tags with ':' separator when both existing
-    // and new tags are present. The log methods don't apply stored defaults,
-    // so we test the merge logic by inspecting the stored option.
 
     #[test]
     fn test_with_defaults_tag_merge_order() {
@@ -1738,11 +1834,6 @@ mod tests {
         assert!(child.info("test"));
     }
 
-    // ── 15. Direct write pipeline ────────────────────────────────────────
-
-    // The full pipeline: _log_fn -> _emit -> write_line writes to stdout/stderr.
-    // We verify the whole flow completes without errors.
-
     #[test]
     fn test_direct_write_pipeline() {
         use crate::reporters::BasicReporter;
@@ -1778,5 +1869,679 @@ mod tests {
 
         // Box type might produce empty-ish output? Let's just exercise it.
         assert!(c.log("test"));
+    }
+
+    #[cfg(feature = "log")]
+    mod log_trait_tests {
+        use super::*;
+
+        #[test]
+        fn test_log_enabled_error() {
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::INFO,
+                ..ConsolaOptions::default()
+            });
+            assert!(log::Log::enabled(
+                &c,
+                &log::Metadata::builder()
+                    .level(log::Level::Error)
+                    .target("test")
+                    .build(),
+            ));
+        }
+
+        #[test]
+        fn test_log_enabled_debug_filtered() {
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::INFO,
+                ..ConsolaOptions::default()
+            });
+            assert!(!log::Log::enabled(
+                &c,
+                &log::Metadata::builder()
+                    .level(log::Level::Debug)
+                    .target("test")
+                    .build(),
+            ));
+        }
+
+        #[test]
+        fn test_log_log_dispatches_to_reporters() {
+            let r = CaptureReporter::new();
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::TRACE,
+                reporters: vec![Box::new(r.clone())],
+                ..ConsolaOptions::default()
+            });
+
+            let record = log::Record::builder()
+                .args(format_args!("log-test-message"))
+                .level(log::Level::Info)
+                .target("test-target")
+                .build();
+            log::Log::log(&c, &record);
+
+            assert_eq!(r.count(), 1);
+            let last = r.last().unwrap();
+            assert!(last.contains("log-test-message"), "got: {}", last);
+        }
+
+        #[test]
+        fn test_log_log_level_filtering() {
+            let r = CaptureReporter::new();
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::WARN,
+                reporters: vec![Box::new(r.clone())],
+                ..ConsolaOptions::default()
+            });
+
+            // Info is below WARN, should be filtered
+            let record = log::Record::builder()
+                .args(format_args!("should-not-appear"))
+                .level(log::Level::Info)
+                .target("test")
+                .build();
+            log::Log::log(&c, &record);
+            assert_eq!(r.count(), 0);
+
+            // Error is above WARN, should pass
+            let record = log::Record::builder()
+                .args(format_args!("should-appear"))
+                .level(log::Level::Error)
+                .target("test")
+                .build();
+            log::Log::log(&c, &record);
+            assert_eq!(r.count(), 1);
+        }
+
+        #[test]
+        fn test_log_log_flush() {
+            let c = Consola::new(ConsolaOptions::default());
+            // flush should not panic
+            log::Log::flush(&c);
+        }
+    }
+
+    #[cfg(feature = "tracing")]
+    mod subscriber_tests {
+        use super::*;
+
+        #[test]
+        fn test_subscriber_macro_info() {
+            let r = CaptureReporter::new();
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::VERBOSE,
+                reporters: vec![Box::new(r.clone())],
+                ..ConsolaOptions::default()
+            });
+            let _guard = tracing::subscriber::set_default(c);
+
+            tracing::info!("macro info message");
+            assert_eq!(r.count(), 1);
+            let last = r.last().unwrap();
+            assert!(last.contains("macro info message"), "got: {}", last);
+        }
+
+        #[test]
+        fn test_subscriber_macro_error() {
+            let r = CaptureReporter::new();
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::VERBOSE,
+                reporters: vec![Box::new(r.clone())],
+                ..ConsolaOptions::default()
+            });
+            let _guard = tracing::subscriber::set_default(c);
+
+            tracing::error!("macro error message");
+            assert_eq!(r.count(), 1);
+            let last = r.last().unwrap();
+            assert!(last.contains("macro error message"), "got: {}", last);
+        }
+
+        #[test]
+        fn test_subscriber_macro_warn() {
+            let r = CaptureReporter::new();
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::VERBOSE,
+                reporters: vec![Box::new(r.clone())],
+                ..ConsolaOptions::default()
+            });
+            let _guard = tracing::subscriber::set_default(c);
+
+            tracing::warn!("macro warn message");
+            assert_eq!(r.count(), 1);
+        }
+
+        #[test]
+        fn test_subscriber_macro_debug() {
+            let r = CaptureReporter::new();
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::VERBOSE,
+                reporters: vec![Box::new(r.clone())],
+                ..ConsolaOptions::default()
+            });
+            let _guard = tracing::subscriber::set_default(c);
+
+            tracing::debug!("macro debug message");
+            assert_eq!(r.count(), 1);
+        }
+
+        #[test]
+        fn test_subscriber_macro_trace() {
+            let r = CaptureReporter::new();
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::VERBOSE,
+                reporters: vec![Box::new(r.clone())],
+                ..ConsolaOptions::default()
+            });
+            let _guard = tracing::subscriber::set_default(c);
+
+            tracing::trace!("macro trace message");
+            assert_eq!(r.count(), 1);
+        }
+
+        #[test]
+        fn test_subscriber_macro_level_filtered() {
+            let r = CaptureReporter::new();
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::WARN,
+                reporters: vec![Box::new(r.clone())],
+                ..ConsolaOptions::default()
+            });
+            let _guard = tracing::subscriber::set_default(c);
+
+            tracing::debug!("should be filtered");
+            assert_eq!(r.count(), 0);
+
+            tracing::warn!("should pass");
+            assert_eq!(r.count(), 1);
+        }
+
+        #[test]
+        fn test_subscriber_macro_filter_off() {
+            let r = CaptureReporter::new();
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::SILENT,
+                reporters: vec![Box::new(r.clone())],
+                ..ConsolaOptions::default()
+            });
+            let _guard = tracing::subscriber::set_default(c);
+
+            tracing::error!("should be silent");
+            assert_eq!(r.count(), 0);
+        }
+
+        #[test]
+        fn test_subscriber_macro_with_span() {
+            let r = CaptureReporter::new();
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::VERBOSE,
+                reporters: vec![Box::new(r.clone())],
+                ..ConsolaOptions::default()
+            });
+            let _guard = tracing::subscriber::set_default(c);
+
+            // Create and enter a span
+            let span = tracing::info_span!("outer_span", user = "alice");
+            let _enter = span.enter();
+
+            tracing::info!("inside span");
+            assert_eq!(r.count(), 1);
+            let last = r.last().unwrap();
+            // Should contain span name and fields
+            assert!(last.contains("outer_span"), "span name missing: {}", last);
+            assert!(
+                last.contains("user") || last.contains("alice"),
+                "span field missing: {}",
+                last
+            );
+        }
+
+        #[test]
+        fn test_subscriber_span_enter_exit_tracking() {
+            let r = CaptureReporter::new();
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::VERBOSE,
+                reporters: vec![Box::new(r.clone())],
+                ..ConsolaOptions::default()
+            });
+            let _guard = tracing::subscriber::set_default(c);
+
+            let span = tracing::info_span!("nested_span");
+            {
+                let _enter = span.enter();
+                tracing::info!("in span");
+            }
+            tracing::info!("after span");
+
+            assert_eq!(r.count(), 2);
+            let all = r.all();
+            assert!(
+                all[0].contains("nested_span"),
+                "span context missing: {}",
+                all[0]
+            );
+            assert!(
+                !all[1].contains("nested_span"),
+                "span context leaked: {}",
+                all[1]
+            );
+        }
+
+        #[test]
+        fn test_subscriber_max_level_hint() {
+            use tracing::Subscriber;
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::DEBUG,
+                ..ConsolaOptions::default()
+            });
+            let hint = Subscriber::max_level_hint(&c);
+            assert_eq!(hint, Some(tracing_core::metadata::LevelFilter::DEBUG));
+        }
+
+        #[test]
+        fn test_subscriber_max_level_hint_silent() {
+            use tracing::Subscriber;
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::SILENT,
+                ..ConsolaOptions::default()
+            });
+            assert_eq!(
+                Subscriber::max_level_hint(&c),
+                Some(tracing_core::metadata::LevelFilter::OFF)
+            );
+        }
+
+        #[test]
+        fn test_subscriber_max_level_hint_error() {
+            use tracing::Subscriber;
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::ERROR,
+                ..ConsolaOptions::default()
+            });
+            assert_eq!(
+                Subscriber::max_level_hint(&c),
+                Some(tracing_core::metadata::LevelFilter::ERROR)
+            );
+        }
+
+        #[test]
+        fn test_subscriber_nested_spans_different_ids() {
+            let r = CaptureReporter::new();
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::VERBOSE,
+                reporters: vec![Box::new(r.clone())],
+                ..ConsolaOptions::default()
+            });
+            let _guard = tracing::subscriber::set_default(c);
+
+            let span_a = tracing::info_span!("a");
+            let span_b = tracing::info_span!("b");
+            assert_ne!(span_a.id(), span_b.id());
+        }
+
+        #[test]
+        fn test_subscriber_event_with_fields() {
+            let r = CaptureReporter::new();
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::VERBOSE,
+                reporters: vec![Box::new(r.clone())],
+                ..ConsolaOptions::default()
+            });
+            let _guard = tracing::subscriber::set_default(c);
+
+            tracing::info!(key = "val", "event with fields");
+            assert_eq!(r.count(), 1);
+            let last = r.last().unwrap();
+            assert!(last.contains("event with fields"), "got: {}", last);
+        }
+
+        #[test]
+        fn test_subscriber_span_record_after_creation() {
+            let r = CaptureReporter::new();
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::VERBOSE,
+                reporters: vec![Box::new(r.clone())],
+                ..ConsolaOptions::default()
+            });
+            let _guard = tracing::subscriber::set_default(c);
+
+            // The field must be declared in the span macro for record() to work.
+            let span = tracing::info_span!("dyn_span", dynamic_key = tracing::field::Empty);
+            span.record("dynamic_key", "dynamic_val");
+            {
+                let _enter = span.enter();
+                tracing::info!("after record");
+            }
+
+            let last = r.last().unwrap();
+            assert!(
+                last.contains("dynamic_key") || last.contains("dynamic_val"),
+                "dynamically recorded field missing: {}",
+                last
+            );
+        }
+
+        #[test]
+        fn test_subscriber_try_close_reclaims() {
+            use tracing::Subscriber;
+            let c = Consola::new(ConsolaOptions::default());
+            let id = tracing::span::Id::from_u64(9999);
+            let closed = Subscriber::try_close(&c, id);
+            assert!(!closed);
+        }
+
+        #[test]
+        fn test_subscriber_record_fields_in_new_span() {
+            let r = CaptureReporter::new();
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::VERBOSE,
+                reporters: vec![Box::new(r.clone())],
+                ..ConsolaOptions::default()
+            });
+            let _guard = tracing::subscriber::set_default(c);
+
+            let span = tracing::info_span!(
+                "fields_span",
+                str_field = "hello",
+                int_field = 42u64,
+                bool_field = true,
+            );
+            {
+                let _enter = span.enter();
+                tracing::info!("check fields");
+            }
+
+            let last = r.last().unwrap();
+            assert!(last.contains("hello"), "str_field: {}", last);
+            assert!(last.contains("42"), "int_field: {}", last);
+            assert!(last.contains("true"), "bool_field: {}", last);
+        }
+
+        #[test]
+        fn test_subscriber_implicit_parent_span() {
+            let r = CaptureReporter::new();
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::VERBOSE,
+                reporters: vec![Box::new(r.clone())],
+                ..ConsolaOptions::default()
+            });
+            let _guard = tracing::subscriber::set_default(c);
+
+            let parent = tracing::info_span!("parent");
+            let _parent_guard = parent.enter();
+
+            let child = tracing::info_span!("child");
+            let _child_guard = child.enter();
+
+            tracing::warn!("deep inside");
+            assert_eq!(r.count(), 1);
+            let last = r.last().unwrap();
+            // Should include child span context (top of stack)
+            assert!(last.contains("child"), "child name missing: {}", last);
+        }
+
+        #[test]
+        fn test_subscriber_multiple_spans_same_name() {
+            let r = CaptureReporter::new();
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::VERBOSE,
+                reporters: vec![Box::new(r.clone())],
+                ..ConsolaOptions::default()
+            });
+            let _guard = tracing::subscriber::set_default(c);
+
+            let a = tracing::info_span!("same_name", val = "a");
+            let b = tracing::info_span!("same_name", val = "b");
+
+            {
+                let _a = a.enter();
+                {
+                    let _b = b.enter();
+                    tracing::info!("inside both");
+                }
+            }
+            let last = r.last().unwrap();
+            assert!(last.contains("same_name"), "got: {}", last);
+        }
+
+        #[test]
+        fn test_subscriber_enabled_direct() {
+            // Test enabled() directly by checking which events pass through
+            let r = CaptureReporter::new();
+            let c = Consola::new(ConsolaOptions {
+                level: log_levels::WARN,
+                reporters: vec![Box::new(r.clone())],
+                ..ConsolaOptions::default()
+            });
+            let _guard = tracing::subscriber::set_default(c);
+
+            tracing::info!("info at warn level");
+            assert_eq!(r.count(), 0, "info should be filtered");
+
+            tracing::warn!("warn at warn level");
+            assert_eq!(r.count(), 1, "warn should pass");
+
+            tracing::error!("error at warn level");
+            assert_eq!(r.count(), 2, "error should pass");
+        }
+    }
+
+    #[test]
+    fn test_add_reporter() {
+        let r1 = CaptureReporter::new();
+        let r2 = CaptureReporter::new();
+        let c = Consola::new(ConsolaOptions {
+            level: log_levels::INFO,
+            reporters: vec![Box::new(r1.clone())],
+            ..ConsolaOptions::default()
+        });
+
+        // Initially only r1 receives
+        assert!(c.info("first"));
+        assert_eq!(r1.count(), 1);
+        assert_eq!(r2.count(), 0);
+
+        c.add_reporter(Box::new(r2.clone()));
+        assert!(c.warn("second"));
+        assert_eq!(r1.count(), 2);
+        assert_eq!(r2.count(), 1);
+    }
+
+    #[test]
+    fn test_set_level_roundtrip() {
+        let c = Consola::new(ConsolaOptions::default());
+        // Levels 0-5 round-trip cleanly; level ≥6 clamps to 5 (max).
+        for level in 0..=5 {
+            c.set_level(level);
+            assert_eq!(c.level(), level, "level {} roundtrip", level);
+        }
+        c.set_level(6);
+        assert_eq!(c.level(), 5, "level 6 should clamp to 5");
+    }
+
+    #[test]
+    fn test_set_level_clamps() {
+        let c = Consola::new(ConsolaOptions::default());
+        c.set_level(100);
+        assert!(c.level() <= 6);
+        c.set_level(255);
+        assert!(c.level() <= 6);
+    }
+
+    #[test]
+    fn test_log_return_value() {
+        let c = Consola::new(ConsolaOptions {
+            level: log_levels::INFO,
+            ..ConsolaOptions::default()
+        });
+        // Levels that pass
+        assert!(c.error("pass"));
+        assert!(c.warn("pass"));
+        assert!(c.info("pass"));
+        // Levels that are filtered
+        assert!(!c.debug("fail"));
+        assert!(!c.trace("fail"));
+    }
+
+    #[test]
+    fn test_verbose_level_accepts_all_methods() {
+        let c = Consola::new(ConsolaOptions {
+            level: log_levels::VERBOSE,
+            ..ConsolaOptions::default()
+        });
+        assert!(c.fatal("ok"));
+        assert!(c.error("ok"));
+        assert!(c.warn("ok"));
+        assert!(c.log("ok"));
+        assert!(c.info("ok"));
+        assert!(c.success("ok"));
+        assert!(c.fail("ok"));
+        assert!(c.ready("ok"));
+        assert!(c.start("ok"));
+        assert!(c.box_("ok"));
+        assert!(c.debug("ok"));
+        assert!(c.trace("ok"));
+        assert!(c.verbose("ok"));
+    }
+
+    #[test]
+    fn test_multiple_reporters_all_receive() {
+        let r1 = CaptureReporter::new();
+        let r2 = CaptureReporter::new();
+        let r3 = CaptureReporter::new();
+        let c = Consola::new(ConsolaOptions {
+            level: log_levels::INFO,
+            reporters: vec![
+                Box::new(r1.clone()),
+                Box::new(r2.clone()),
+                Box::new(r3.clone()),
+            ],
+            ..ConsolaOptions::default()
+        });
+        assert!(c.info("broadcast"));
+        assert_eq!(r1.count(), 1);
+        assert_eq!(r2.count(), 1);
+        assert_eq!(r3.count(), 1);
+    }
+
+    #[test]
+    fn test_defaults_do_not_affect_original() {
+        let r = CaptureReporter::new();
+        let c = Consola::new(ConsolaOptions {
+            reporters: vec![Box::new(r.clone())],
+            ..ConsolaOptions::default()
+        });
+        let _sub = c.with_defaults(LogObjectInput {
+            tag: Some("child".into()),
+            ..LogObjectInput::default()
+        });
+        // The original should not pick up the child's defaults
+        c.info("original");
+        let last = r.last().unwrap();
+        // The tag should be empty (no "child" prefix)
+        assert!(!last.contains("child"), "got: {}", last);
+    }
+
+    #[test]
+    fn test_create_without_reporters_still_emits() {
+        // Create with no reporters — emit should still succeed (no-op)
+        let c = Consola::new(ConsolaOptions {
+            level: log_levels::INFO,
+            reporters: vec![],
+            ..ConsolaOptions::default()
+        });
+        assert!(c.info("no-reporter"));
+    }
+
+    #[test]
+    fn test_log_obj_with_multiple_args() {
+        let r = CaptureReporter::new();
+        let c = Consola::new(ConsolaOptions {
+            reporters: vec![Box::new(r.clone())],
+            ..ConsolaOptions::default()
+        });
+        let input = LogObjectInput {
+            r#type: Some(LogType::Info),
+            message: Some("main".into()),
+            args: vec!["arg1".into(), "arg2".into()],
+            ..LogObjectInput::default()
+        };
+        assert!(c.log_obj(&input));
+        let last = r.last().unwrap();
+        assert!(last.contains("main"), "got: {}", last);
+        assert!(last.contains("arg1"), "got: {}", last);
+        assert!(last.contains("arg2"), "got: {}", last);
+    }
+
+    #[test]
+    fn test_pause_during_reporter_error() {
+        // Pausing while a reporter returns an error should not panic
+        let err_reporter = ErrReporter {};
+        let c = Consola::new(ConsolaOptions {
+            level: log_levels::INFO,
+            reporters: vec![Box::new(err_reporter)],
+            ..ConsolaOptions::default()
+        });
+        c.pause_logs();
+        assert!(c.info("queued"));
+        c.resume_logs();
+    }
+
+    #[test]
+    fn test_with_tag_chaining_does_not_panic() {
+        let r = CaptureReporter::new();
+        let c = Consola::new(ConsolaOptions {
+            reporters: vec![Box::new(r.clone())],
+            ..ConsolaOptions::default()
+        });
+        // Chaining with_tag produces a child Consola; the child's own
+        // tag comes from its defaults, not from the parent instance.
+        let parent = c.with_tag("parent");
+        let child = parent.with_tag("child");
+        child.info("nested");
+        assert_eq!(r.count(), 1);
+    }
+
+    #[test]
+    fn test_log_all_raw_variants() {
+        let r = CaptureReporter::new();
+        let c = Consola::new(ConsolaOptions {
+            level: log_levels::VERBOSE,
+            reporters: vec![Box::new(r.clone())],
+            ..ConsolaOptions::default()
+        });
+        assert!(c.fatal_raw("raw-fatal"));
+        assert!(c.error_raw("raw-error"));
+        assert!(c.warn_raw("raw-warn"));
+        assert!(c.log_raw("raw-log"));
+        assert!(c.info_raw("raw-info"));
+        assert!(c.success_raw("raw-success"));
+        assert!(c.fail_raw("raw-fail"));
+        assert!(c.ready_raw("raw-ready"));
+        assert!(c.start_raw("raw-start"));
+        assert!(c.box_raw("raw-box"));
+        assert!(c.debug_raw("raw-debug"));
+        assert!(c.trace_raw("raw-trace"));
+        assert!(c.verbose_raw("raw-verbose"));
+        assert_eq!(r.count(), 13);
+    }
+
+    #[test]
+    fn test_throttle_different_levels_both_emitted() {
+        let r = CaptureReporter::new();
+        let c = Consola::new(ConsolaOptions {
+            level: log_levels::INFO,
+            reporters: vec![Box::new(r.clone())],
+            throttle: 0,
+            ..ConsolaOptions::default()
+        });
+        // Throttle disabled (0) — every call emits.
+        assert!(c.info("first"));
+        assert!(c.warn("second"));
+        let all = r.all();
+        assert_eq!(all.len(), 2, "got: {:?}", all);
+        assert!(all[0].contains("first"), "got: {}", all[0]);
+        assert!(all[1].contains("second"), "got: {}", all[1]);
     }
 }

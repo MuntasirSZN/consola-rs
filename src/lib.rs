@@ -1,5 +1,4 @@
-//! ─── consola-rs: Elegant Console Logger ──────────────────────────────────────
-//! Ported from consola-js v3.4.2
+//! `consola-rs` Elegant Console Logger
 //!
 //! Features:
 //!   - `jiff` (default): timestamps via jiff
@@ -10,7 +9,7 @@
 //!   - `tracing`: implement `tracing::Subscriber` (receive from `tracing` crate)
 //!   - `browser`: browser console styling via `web-sys` (runtime detection)
 //!   - `parking_lot`: use `parking_lot::Mutex` (default: std::sync::Mutex)
-//!   - `prompt`: interactive prompts via demand (default)
+//!   - `prompt`: interactive prompts via demand
 //!   - `prompt-inquire`: interactive prompts via inquire
 //!   - `prompt-dialoguer`: interactive prompts via dialoguer
 #![deny(unsafe_code)]
@@ -33,8 +32,6 @@ use std::sync::LazyLock;
 
 use reporters::{BasicReporter, FancyReporter};
 use types::ConsolaOptions;
-
-// ─── Factory functions ───────────────────────────────────────────────────────
 
 /// Create a new Consola instance with the given reporters and options.
 ///
@@ -90,19 +87,13 @@ pub fn create_core_consola(
     })
 }
 
-// ─── Default instance ─────────────────────────────────────────────────────────
-
 /// A default, lazily-initialized [`Consola`] instance for convenience use.
 pub static CONSOLA: LazyLock<Consola> = LazyLock::new(|| create_consola(None, vec![]));
-
-// ─── Re-exports ───────────────────────────────────────────────────────────────
 
 pub use consola::Consola;
 pub use constants::{LogLevel, LogType, log_levels};
 pub use types::{ConsolaOptions as ConsolaOpts, FormatOptions, LogObject, LogObjectInput};
 pub use util::*;
-
-// ─── Prompt module ────────────────────────────────────────────────────────
 
 /// Interactive prompts for user input.
 ///
@@ -110,9 +101,9 @@ pub use util::*;
 /// plus the sentinel constant [`K_CANCEL`] returned when the user aborts.
 ///
 /// Backend selection (priority):
+/// - `prompt` → demand (default)
 /// - `prompt-inquire` → inquire
 /// - `prompt-dialoguer` → dialoguer
-/// - `prompt` → demand (default)
 #[cfg(any(
     feature = "prompt",
     feature = "prompt-inquire",
@@ -127,115 +118,8 @@ pub mod prompt {
         SelectPromptOptions, TextPromptOptions,
     };
 
-    // ── Backend dispatch ───────────────────────────────────────────────
-
-    /// Inquire backend (highest priority).
-    #[cfg(feature = "prompt-inquire")]
-    mod backend {
-        use super::*;
-
-        pub(super) fn text(message: &str, opts: &TextPromptOptions) -> Result<String, String> {
-            let mut input = inquire::Text::new(message);
-            if let Some(placeholder) = &opts.placeholder {
-                input = input.with_placeholder(placeholder);
-            }
-            if let Some(default) = &opts.default {
-                input = input.with_default(default);
-            }
-            input.prompt().map_err(|e| e.to_string())
-        }
-
-        pub(super) fn confirm(message: &str, opts: &ConfirmPromptOptions) -> Result<bool, String> {
-            let mut dialog = inquire::Confirm::new(message);
-            if let Some(initial) = opts.initial {
-                dialog = dialog.with_default(initial);
-            }
-            dialog.prompt().map_err(|e| e.to_string())
-        }
-
-        pub(super) fn select(message: &str, opts: &SelectPromptOptions) -> Result<String, String> {
-            let labels: Vec<String> = opts.options.iter().map(|o| o.label.clone()).collect();
-            let sel = inquire::Select::new(message, labels.clone())
-                .prompt()
-                .map_err(|e| e.to_string())?;
-            let i = labels.iter().position(|s| *s == sel).unwrap();
-            Ok(opts.options[i].value.clone())
-        }
-
-        pub(super) fn multiselect(
-            message: &str,
-            opts: &MultiSelectOptions,
-        ) -> Result<Vec<String>, String> {
-            let labels: Vec<String> = opts.options.iter().map(|o| o.label.clone()).collect();
-            let selected = inquire::MultiSelect::new(message, labels.clone())
-                .prompt()
-                .map_err(|e| e.to_string())?;
-            Ok(selected
-                .iter()
-                .map(|sel| {
-                    let i = labels.iter().position(|s| *s == *sel).unwrap();
-                    opts.options[i].value.clone()
-                })
-                .collect())
-        }
-    }
-
-    /// Dialoguer backend (middle priority).
-    #[cfg(all(feature = "prompt-dialoguer", not(feature = "prompt-inquire")))]
-    mod backend {
-        use super::*;
-
-        pub(super) fn text(message: &str, opts: &TextPromptOptions) -> Result<String, String> {
-            let mut input = dialoguer::Input::<String>::new().with_prompt(message);
-            if let Some(default) = &opts.default {
-                input = input.with_initial_text(default);
-            }
-            input
-                .allow_empty(true)
-                .interact_text()
-                .map_err(|e| e.to_string())
-        }
-
-        pub(super) fn confirm(message: &str, opts: &ConfirmPromptOptions) -> Result<bool, String> {
-            let mut dialog = dialoguer::Confirm::new().with_prompt(message);
-            if let Some(initial) = opts.initial {
-                dialog = dialog.default(initial);
-            }
-            dialog.interact().map_err(|e| e.to_string())
-        }
-
-        pub(super) fn select(message: &str, opts: &SelectPromptOptions) -> Result<String, String> {
-            let items: Vec<&str> = opts.options.iter().map(|o| o.label.as_str()).collect();
-            let i = dialoguer::Select::new()
-                .with_prompt(message)
-                .items(&items)
-                .interact()
-                .map_err(|e| e.to_string())?;
-            Ok(opts.options[i].value.clone())
-        }
-
-        pub(super) fn multiselect(
-            message: &str,
-            opts: &MultiSelectOptions,
-        ) -> Result<Vec<String>, String> {
-            let items: Vec<&str> = opts.options.iter().map(|o| o.label.as_str()).collect();
-            let selected = dialoguer::MultiSelect::new()
-                .with_prompt(message)
-                .items(&items)
-                .interact()
-                .map_err(|e| e.to_string())?;
-            Ok(selected
-                .iter()
-                .map(|&i| opts.options[i].value.clone())
-                .collect())
-        }
-    }
-
-    /// Demand backend (lowest priority, backward compatible).
-    #[cfg(all(
-        feature = "prompt",
-        not(any(feature = "prompt-inquire", feature = "prompt-dialoguer"))
-    ))]
+    /// Demand backend (highest priority).
+    #[cfg(feature = "prompt")]
     mod backend {
         use super::*;
         use demand::{Confirm, Input, MultiSelect, Select};
@@ -308,7 +192,110 @@ pub mod prompt {
         }
     }
 
-    // ── Public API ─────────────────────────────────────────────────────
+    /// Inquire backend (middle priority).
+    #[cfg(all(feature = "prompt-inquire", not(feature = "prompt")))]
+    mod backend {
+        use super::*;
+
+        pub(super) fn text(message: &str, opts: &TextPromptOptions) -> Result<String, String> {
+            let mut input = inquire::Text::new(message);
+            if let Some(placeholder) = &opts.placeholder {
+                input = input.with_placeholder(placeholder);
+            }
+            if let Some(default) = &opts.default {
+                input = input.with_default(default);
+            }
+            input.prompt().map_err(|e| e.to_string())
+        }
+
+        pub(super) fn confirm(message: &str, opts: &ConfirmPromptOptions) -> Result<bool, String> {
+            let mut dialog = inquire::Confirm::new(message);
+            if let Some(initial) = opts.initial {
+                dialog = dialog.with_default(initial);
+            }
+            dialog.prompt().map_err(|e| e.to_string())
+        }
+
+        pub(super) fn select(message: &str, opts: &SelectPromptOptions) -> Result<String, String> {
+            let labels: Vec<String> = opts.options.iter().map(|o| o.label.clone()).collect();
+            let sel = inquire::Select::new(message, labels.clone())
+                .prompt()
+                .map_err(|e| e.to_string())?;
+            let i = labels.iter().position(|s| *s == sel).unwrap();
+            Ok(opts.options[i].value.clone())
+        }
+
+        pub(super) fn multiselect(
+            message: &str,
+            opts: &MultiSelectOptions,
+        ) -> Result<Vec<String>, String> {
+            let labels: Vec<String> = opts.options.iter().map(|o| o.label.clone()).collect();
+            let selected = inquire::MultiSelect::new(message, labels.clone())
+                .prompt()
+                .map_err(|e| e.to_string())?;
+            Ok(selected
+                .iter()
+                .map(|sel| {
+                    let i = labels.iter().position(|s| *s == *sel).unwrap();
+                    opts.options[i].value.clone()
+                })
+                .collect())
+        }
+    }
+
+    /// Dialoguer backend (lowest priority).
+    #[cfg(all(
+        feature = "prompt-dialoguer",
+        not(any(feature = "prompt", feature = "prompt-inquire"))
+    ))]
+    mod backend {
+        use super::*;
+
+        pub(super) fn text(message: &str, opts: &TextPromptOptions) -> Result<String, String> {
+            let mut input = dialoguer::Input::<String>::new().with_prompt(message);
+            if let Some(default) = &opts.default {
+                input = input.with_initial_text(default);
+            }
+            input
+                .allow_empty(true)
+                .interact_text()
+                .map_err(|e| e.to_string())
+        }
+
+        pub(super) fn confirm(message: &str, opts: &ConfirmPromptOptions) -> Result<bool, String> {
+            let mut dialog = dialoguer::Confirm::new().with_prompt(message);
+            if let Some(initial) = opts.initial {
+                dialog = dialog.default(initial);
+            }
+            dialog.interact().map_err(|e| e.to_string())
+        }
+
+        pub(super) fn select(message: &str, opts: &SelectPromptOptions) -> Result<String, String> {
+            let items: Vec<&str> = opts.options.iter().map(|o| o.label.as_str()).collect();
+            let i = dialoguer::Select::new()
+                .with_prompt(message)
+                .items(&items)
+                .interact()
+                .map_err(|e| e.to_string())?;
+            Ok(opts.options[i].value.clone())
+        }
+
+        pub(super) fn multiselect(
+            message: &str,
+            opts: &MultiSelectOptions,
+        ) -> Result<Vec<String>, String> {
+            let items: Vec<&str> = opts.options.iter().map(|o| o.label.as_str()).collect();
+            let selected = dialoguer::MultiSelect::new()
+                .with_prompt(message)
+                .items(&items)
+                .interact()
+                .map_err(|e| e.to_string())?;
+            Ok(selected
+                .iter()
+                .map(|&i| opts.options[i].value.clone())
+                .collect())
+        }
+    }
 
     /// Prompt the user for free-form text input.
     pub fn text(message: &str, opts: &TextPromptOptions) -> Result<String, String> {
@@ -371,8 +358,6 @@ pub mod prompt {
         Err("interactive prompts require the `prompt`, `prompt-inquire`, or `prompt-dialoguer` Cargo feature".into())
     }
 }
-
-// ─── Tests ────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
@@ -480,5 +465,150 @@ mod tests {
         // Should not panic with repeated messages
         c.info("message");
         c.info("message");
+    }
+
+    #[test]
+    fn test_create_basic_consola() {
+        let c = create_basic_consola(Some(log_levels::DEBUG));
+        assert!(c.debug("basic debug"));
+        assert!(!c.trace("basic trace filtered"));
+    }
+
+    #[test]
+    fn test_create_fancy_consola() {
+        let c = create_fancy_consola(Some(log_levels::VERBOSE));
+        assert!(c.info("fancy info"));
+        assert!(c.trace("fancy trace"));
+    }
+
+    #[test]
+    fn test_create_core_consola() {
+        use crate::reporters::BasicReporter;
+        let r = BasicReporter;
+        let c = create_core_consola(Some(log_levels::INFO), vec![Box::new(r)]);
+        assert!(c.warn("core warn"));
+        assert!(!c.debug("core debug filtered"));
+    }
+
+    #[test]
+    fn test_create_consola_with_multiple_reporters() {
+        use crate::reporters::BasicReporter;
+        use crate::reporters::FancyReporter;
+        let reporters: Vec<Box<dyn Reporter>> =
+            vec![Box::new(BasicReporter), Box::new(FancyReporter::new())];
+        let c = create_consola(Some(log_levels::INFO), reporters);
+        assert!(c.info("multi reporter"));
+    }
+
+    #[test]
+    fn test_create_consola_default_level() {
+        let c = create_consola(None, vec![]);
+        assert!(c.info("default level"));
+        assert!(!c.debug("debug filtered at default"));
+    }
+
+    #[test]
+    fn test_consola_static_emits() {
+        // The static CONSOLA instance should accept messages
+        let _ = CONSOLA.info("static consola test");
+    }
+
+    #[test]
+    fn test_create_basic_consola_default_level() {
+        let c = create_basic_consola(None);
+        assert!(c.warn("basic default"));
+    }
+
+    #[test]
+    fn test_create_fancy_consola_default_level() {
+        let c = create_fancy_consola(None);
+        assert!(c.info("fancy default"));
+    }
+
+    #[cfg(any(
+        feature = "prompt",
+        feature = "prompt-inquire",
+        feature = "prompt-dialoguer"
+    ))]
+    mod prompt_tests {
+        use super::super::prompt;
+
+        #[test]
+        fn test_k_cancel_exists() {
+            assert_eq!(prompt::K_CANCEL, "Symbol(cancel)");
+        }
+    }
+
+    #[cfg(not(any(
+        feature = "prompt",
+        feature = "prompt-inquire",
+        feature = "prompt-dialoguer"
+    )))]
+    mod prompt_stub_tests {
+        use super::super::prompt;
+
+        #[test]
+        fn test_stub_k_cancel_exists() {
+            assert_eq!(prompt::K_CANCEL, "Symbol(cancel)");
+        }
+
+        #[test]
+        fn test_stub_returns_feature_error() {
+            let result = prompt::text(
+                "x",
+                &prompt::TextPromptOptions {
+                    common: prompt::PromptCommonOptions { cancel: None },
+                    r#type: None,
+                    default: None,
+                    placeholder: None,
+                    initial: None,
+                },
+            );
+            assert!(result.is_err());
+            let err = result.unwrap_err();
+            assert!(err.contains("interactive prompts require"), "got: {}", err);
+        }
+
+        #[test]
+        fn test_stub_confirm_returns_feature_error() {
+            let result = prompt::confirm(
+                "x",
+                &prompt::ConfirmPromptOptions {
+                    common: prompt::PromptCommonOptions { cancel: None },
+                    r#type: "confirm".into(),
+                    initial: None,
+                },
+            );
+            assert!(result.is_err());
+        }
+
+        #[test]
+        fn test_stub_select_returns_feature_error() {
+            let result = prompt::select(
+                "x",
+                &prompt::SelectPromptOptions {
+                    common: prompt::PromptCommonOptions { cancel: None },
+                    r#type: "select".into(),
+                    initial: None,
+                    options: vec![],
+                },
+            );
+            assert!(result.is_err());
+        }
+
+        #[test]
+        fn test_stub_multiselect_returns_feature_error() {
+            let result = prompt::multiselect(
+                "x",
+                &prompt::MultiSelectOptions {
+                    common: prompt::PromptCommonOptions { cancel: None },
+                    r#type: "multiselect".into(),
+                    initial: None,
+                    required: None,
+                    options: vec![],
+                },
+            );
+            assert!(result.is_err());
+        }
     }
 }

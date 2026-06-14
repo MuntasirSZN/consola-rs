@@ -16,6 +16,26 @@ pub use crate::types::{
     SelectPromptOptions, TextPromptOptions,
 };
 
+/// Prompt the user for free-form text input.
+pub fn text(message: &str, opts: &TextPromptOptions) -> Result<String, String> {
+    backend::text(message, opts)
+}
+
+/// Prompt the user for a yes/no confirmation.
+pub fn confirm(message: &str, opts: &ConfirmPromptOptions) -> Result<bool, String> {
+    backend::confirm(message, opts)
+}
+
+/// Prompt the user to select a single option from a list.
+pub fn select(message: &str, opts: &SelectPromptOptions) -> Result<String, String> {
+    backend::select(message, opts)
+}
+
+/// Prompt the user to select one or more options from a list.
+pub fn multiselect(message: &str, opts: &MultiSelectOptions) -> Result<Vec<String>, String> {
+    backend::multiselect(message, opts)
+}
+
 /// Mock backend used in `#[cfg(test)]` — always active in tests, regardless of features.
 /// Returns deterministic values without real TTY access.
 #[cfg(test)]
@@ -256,24 +276,4 @@ mod backend {
     ) -> Result<Vec<String>, String> {
         Err("interactive prompts require the `prompt`, `prompt-inquire`, or `prompt-dialoguer` Cargo feature".into())
     }
-}
-
-/// Prompt the user for free-form text input.
-pub fn text(message: &str, opts: &TextPromptOptions) -> Result<String, String> {
-    backend::text(message, opts)
-}
-
-/// Prompt the user for a yes/no confirmation.
-pub fn confirm(message: &str, opts: &ConfirmPromptOptions) -> Result<bool, String> {
-    backend::confirm(message, opts)
-}
-
-/// Prompt the user to select a single option from a list.
-pub fn select(message: &str, opts: &SelectPromptOptions) -> Result<String, String> {
-    backend::select(message, opts)
-}
-
-/// Prompt the user to select one or more options from a list.
-pub fn multiselect(message: &str, opts: &MultiSelectOptions) -> Result<Vec<String>, String> {
-    backend::multiselect(message, opts)
 }

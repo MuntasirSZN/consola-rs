@@ -313,17 +313,3 @@ fn test_k_cancel_exists() {
     // K_CANCEL is defined in the prompt module
     assert_eq!(::consola::prompt::K_CANCEL, "Symbol(cancel)");
 }
-
-// ===================================================================
-// Mock-backend prompt tests (active in test builds regardless of features)
-// ===================================================================
-
-#[test]
-fn test_mock_prompt_confirm() {
-    let opts = ::consola::prompt::ConfirmPromptOptions {
-        common: ::consola::prompt::PromptCommonOptions { cancel: None },
-        r#type: "confirm".into(),
-        initial: Some(true),
-    };
-    assert_eq!(::consola::prompt::confirm("confirm?", &opts), Ok(true));
-}

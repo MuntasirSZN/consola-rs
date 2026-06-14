@@ -4,7 +4,9 @@
 // See `super::log_impl` declaration in mod.rs.
 
 use crate::constants::LogType;
-use crate::types::{ErrorInfo, LogObject};
+use crate::types::LogObject;
+#[cfg(feature = "backtrace")]
+use crate::types::ErrorInfo;
 
 use super::Consola;
 

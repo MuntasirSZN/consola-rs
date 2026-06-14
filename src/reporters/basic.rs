@@ -78,11 +78,11 @@ impl BasicReporter {
     /// Like `format_date` but accepts an explicit timestamp (milliseconds since epoch).
     /// Used internally so tests can inject a specific time.
     #[allow(unreachable_code)]
-    pub(crate) fn format_date_at(&self, opts: &FormatOptions, now_ms: i64) -> String {
+    pub(crate) fn format_date_at(&self, opts: &FormatOptions, _now_ms: i64) -> String {
         if opts.date {
             #[cfg(feature = "jiff")]
             {
-                if let Ok(ts) = jiff::Timestamp::from_millisecond(now_ms) {
+                if let Ok(ts) = jiff::Timestamp::from_millisecond(_now_ms) {
                     let zoned = ts.to_zoned(jiff::tz::TimeZone::system());
                     let civil = zoned.datetime();
                     let h = civil.hour();
@@ -144,7 +144,7 @@ impl BasicReporter {
 
             // Fallback: UTC-based 12-hour (unreachable when a crate feature is active)
             {
-                let total_secs = (now_ms / 1000) as u64;
+                let total_secs = (_now_ms / 1000) as u64;
                 let hours = (total_secs / 3600) % 24;
                 let mins = (total_secs / 60) % 60;
                 let secs = total_secs % 60;

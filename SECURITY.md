@@ -1,11 +1,5 @@
 # Security Policy
 
-## Supported Versions
-
-| Version | Supported |
-| ------- | ------------------ |
-| 0.1.0   | :white_check_mark: |
-
 ## Reporting a Vulnerability
 
 We take security seriously. If you discover a security vulnerability in consola-rs, please report it privately.

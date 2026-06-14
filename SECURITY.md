@@ -4,9 +4,7 @@
 
 | Version | Supported |
 | ------- | ------------------ |
-| 0.0.0-alpha.x | :white_check_mark: |
-
-**Note**: This project is in alpha stage. Security updates will be provided for the latest alpha version.
+| 0.1.0   | :white_check_mark: |
 
 ## Reporting a Vulnerability
 

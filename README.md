@@ -11,7 +11,7 @@ An elegant console logger for Rust, ported from [consola-js](https://github.com/
 
 ```toml
 [dependencies]
-consola = "0.0.0-alpha.0"
+consola = "0.1.0"
 ```
 
 ```rust
@@ -185,7 +185,7 @@ consola.info("works in the browser console");
 
 ```toml
 [dependencies]
-consola = { version = "0.0.0-alpha.0", features = ["prompt"] }
+consola = { version = "0.1.0", features = ["prompt"] }
 ```
 
 ```rust

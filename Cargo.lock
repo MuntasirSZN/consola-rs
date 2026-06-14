@@ -245,7 +245,7 @@ checksum = "baf0a07a401f374238ab8e2f11a104d2851bf9ce711ec69804834de8af45c7af"
 
 [[package]]
 name = "consola"
-version = "0.0.0-alpha.0"
+version = "0.1.0"
 dependencies = [
  "anstyle",
  "backtrace",

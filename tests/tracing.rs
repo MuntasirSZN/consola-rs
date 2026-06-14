@@ -37,7 +37,11 @@ impl CaptureReporter {
 }
 
 impl Reporter for CaptureReporter {
-    fn format(&self, log_obj: &LogObject, _ctx: &LogContext) -> Result<String, String> {
+    fn format(
+        &self,
+        log_obj: &LogObject,
+        _ctx: &LogContext,
+    ) -> Result<String, consola::error::ConsolaError> {
         let tag_part = if log_obj.tag.is_empty() {
             String::new()
         } else {

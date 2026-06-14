@@ -18,7 +18,11 @@ use std::sync::Arc;
 struct TestReporter;
 
 impl Reporter for TestReporter {
-    fn format(&self, log_obj: &LogObject, _ctx: &LogContext) -> Result<String, String> {
+    fn format(
+        &self,
+        log_obj: &LogObject,
+        _ctx: &LogContext,
+    ) -> Result<String, consola::error::ConsolaError> {
         Ok(log_obj.message.clone().unwrap_or_default())
     }
     fn clone_box(&self) -> Box<dyn Reporter> {

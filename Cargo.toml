@@ -16,6 +16,7 @@ retries = 1
 junit = { path = "junit.xml" }
 
 [dependencies]
+thiserror = "2"
 parking_lot = { version = "0.12", optional = true }
 anstyle = "1"
 unicode-width = "0.2"

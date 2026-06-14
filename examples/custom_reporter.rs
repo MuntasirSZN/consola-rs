@@ -24,7 +24,11 @@ impl TimestampReporter {
 }
 
 impl Reporter for TimestampReporter {
-    fn format(&self, log_obj: &LogObject, _ctx: &LogContext) -> Result<String, String> {
+    fn format(
+        &self,
+        log_obj: &LogObject,
+        _ctx: &LogContext,
+    ) -> Result<String, consola::error::ConsolaError> {
         // Format: "{prefix} [{level}] message"
         let args_str = if log_obj.args.is_empty() {
             String::new()

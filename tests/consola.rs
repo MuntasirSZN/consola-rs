@@ -33,7 +33,11 @@ impl CaptureReporter {
 }
 
 impl Reporter for CaptureReporter {
-    fn format(&self, log_obj: &LogObject, _ctx: &LogContext) -> Result<String, String> {
+    fn format(
+        &self,
+        log_obj: &LogObject,
+        _ctx: &LogContext,
+    ) -> Result<String, consola::error::ConsolaError> {
         let tag_part = if log_obj.tag.is_empty() {
             String::new()
         } else {
@@ -58,8 +62,14 @@ impl Reporter for CaptureReporter {
 struct ErrReporter;
 
 impl Reporter for ErrReporter {
-    fn format(&self, _log_obj: &LogObject, _ctx: &LogContext) -> Result<String, String> {
-        Err("intentional test error".into())
+    fn format(
+        &self,
+        _log_obj: &LogObject,
+        _ctx: &LogContext,
+    ) -> Result<String, consola::error::ConsolaError> {
+        Err(consola::error::ConsolaError::Reporter(
+            "intentional test error".into(),
+        ))
     }
 
     fn clone_box(&self) -> Box<dyn Reporter> {
@@ -142,7 +152,7 @@ fn test_remove_reporter() {
     let c = consola::Consola::new(opts);
     c.info("msg1");
     assert_eq!(cr.count(), 1);
-    c.remove_reporter(0);
+    c.remove_reporter(0).unwrap();
     c.info("msg2");
     assert_eq!(cr.count(), 1);
 }
@@ -709,21 +719,21 @@ fn test_remove_reporter_out_of_bounds() {
         ..ConsolaOptions::default()
     };
     let c = consola::Consola::new(opts);
-    // removing index 5 from a list with 1 element should panic
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        c.remove_reporter(5);
-    }));
-    assert!(result.is_err(), "expected panic on OOB remove");
+    // removing index 5 from a list with 1 element should error
+    assert!(
+        c.remove_reporter(5).is_err(),
+        "expected error on OOB remove"
+    );
 }
 
 #[test]
 fn test_remove_reporter_empty() {
     let c = consola::Consola::new(ConsolaOptions::default());
-    // removing index 0 from an empty list should panic
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        c.remove_reporter(0);
-    }));
-    assert!(result.is_err(), "expected panic on remove from empty");
+    // removing index 0 from an empty list should error
+    assert!(
+        c.remove_reporter(0).is_err(),
+        "expected error on remove from empty"
+    );
 }
 
 #[test]

@@ -15,6 +15,9 @@
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 
+/// Typed error definitions.
+pub mod error;
+
 /// The core [`Consola`] struct and its methods for creating and managing log entries.
 pub mod consola;
 /// Log level and log type constants used throughout the library.

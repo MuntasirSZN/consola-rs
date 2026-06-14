@@ -207,7 +207,11 @@ pub struct LogContext {
 pub trait Reporter: std::fmt::Debug + Send + Sync {
     /// Format a log object. Returns `Err(reason)` if this reporter cannot handle the
     /// current environment (e.g. BasicReporter on WASM). `Ok(text)` to emit.
-    fn format(&self, log_obj: &LogObject, ctx: &LogContext) -> Result<String, String>;
+    fn format(
+        &self,
+        log_obj: &LogObject,
+        ctx: &LogContext,
+    ) -> Result<String, crate::error::ConsolaError>;
     /// Clone the reporter into a boxed trait object.
     fn clone_box(&self) -> Box<dyn Reporter>;
 }

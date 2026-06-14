@@ -213,7 +213,11 @@ impl BasicReporter {
 }
 
 impl Reporter for BasicReporter {
-    fn format(&self, log_obj: &LogObject, ctx: &LogContext) -> Result<String, String> {
+    fn format(
+        &self,
+        log_obj: &LogObject,
+        ctx: &LogContext,
+    ) -> Result<String, crate::error::ConsolaError> {
         let opts = &ctx.options.format_options;
         Ok(self.format_log_obj(log_obj, opts))
     }

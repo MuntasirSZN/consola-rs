@@ -69,8 +69,9 @@ fn bg_color_fn(name: &str) -> fn(&str) -> String {
     let bg_name = format!("bg_{}", name);
     let f = get_color(&bg_name);
     // If the bg_name variant didn't exist, try the camelCase variant
-    if name != "white" {
-        let alt = format!("bg{}{}", name[..1].to_uppercase(), &name[1..]);
+    if !name.is_empty() && name != "white" {
+        let first = &name[..1];
+        let alt = format!("bg{}{}", first.to_uppercase(), &name[1..]);
         let f2 = get_color(&alt);
         // Check if it's any different from the default
         if f2 as usize != get_color("white") as usize {
@@ -294,7 +295,11 @@ impl FancyReporter {
 }
 
 impl Reporter for FancyReporter {
-    fn format(&self, log_obj: &LogObject, ctx: &LogContext) -> Result<String, String> {
+    fn format(
+        &self,
+        log_obj: &LogObject,
+        ctx: &LogContext,
+    ) -> Result<String, crate::error::ConsolaError> {
         Ok(self.format_log_obj(log_obj, &ctx.options.format_options))
     }
 

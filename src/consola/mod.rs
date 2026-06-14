@@ -86,8 +86,16 @@ impl Consola {
     }
 
     /// Remove a reporter at the given index.
-    pub fn remove_reporter(&self, index: usize) {
-        self.options.lock().reporters.remove(index);
+    ///
+    /// Returns an error if `index` is out of bounds.
+    pub fn remove_reporter(&self, index: usize) -> Result<(), crate::error::ConsolaError> {
+        let mut opts = self.options.lock();
+        let len = opts.reporters.len();
+        if index >= len {
+            return Err(crate::error::ConsolaError::ReporterIndexOutOfBounds { index, len });
+        }
+        opts.reporters.remove(index);
+        Ok(())
     }
 
     /// Remove all reporters.

@@ -164,7 +164,11 @@ impl BrowserReporter {
 }
 
 impl Reporter for BrowserReporter {
-    fn format(&self, log_obj: &LogObject, ctx: &LogContext) -> Result<String, String> {
+    fn format(
+        &self,
+        log_obj: &LogObject,
+        ctx: &LogContext,
+    ) -> Result<String, crate::error::ConsolaError> {
         // In browser: emit styled output, return empty string (already emitted)
         #[cfg(all(target_arch = "wasm32", feature = "browser"))]
         if self.browser {

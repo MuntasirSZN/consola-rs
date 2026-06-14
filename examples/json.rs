@@ -24,7 +24,11 @@ use consola::{
 struct JsonReporter;
 
 impl Reporter for JsonReporter {
-    fn format(&self, log_obj: &LogObject, _ctx: &LogContext) -> Result<String, String> {
+    fn format(
+        &self,
+        log_obj: &LogObject,
+        _ctx: &LogContext,
+    ) -> Result<String, consola::error::ConsolaError> {
         let obj = serde_json::json!({
             "level": log_obj.level,
             "type": log_obj.r#type.as_str(),
@@ -39,7 +43,8 @@ impl Reporter for JsonReporter {
             "style": log_obj.style,
             "error": log_obj.error.as_ref().map(error_to_json),
         });
-        serde_json::to_string(&obj).map_err(|e| e.to_string())
+        serde_json::to_string(&obj)
+            .map_err(|e| consola::error::ConsolaError::Reporter(e.to_string()))
     }
 
     fn clone_box(&self) -> Box<dyn Reporter> {
@@ -65,7 +70,11 @@ fn error_to_json(err: &ErrorInfo) -> serde_json::Value {
 struct CompactJsonReporter;
 
 impl Reporter for CompactJsonReporter {
-    fn format(&self, log_obj: &LogObject, _ctx: &LogContext) -> Result<String, String> {
+    fn format(
+        &self,
+        log_obj: &LogObject,
+        _ctx: &LogContext,
+    ) -> Result<String, consola::error::ConsolaError> {
         let obj = serde_json::json!({
             "type": log_obj.r#type.as_str(),
             "tag": log_obj.tag,
@@ -73,7 +82,8 @@ impl Reporter for CompactJsonReporter {
             "args": log_obj.args,
             "timestamp_ms": log_obj.timestamp_ms,
         });
-        serde_json::to_string(&obj).map_err(|e| e.to_string())
+        serde_json::to_string(&obj)
+            .map_err(|e| consola::error::ConsolaError::Reporter(e.to_string()))
     }
 
     fn clone_box(&self) -> Box<dyn Reporter> {

@@ -68,6 +68,7 @@ name = "json"
 path = "examples/json.rs"
 
 [dev-dependencies]
+parking_lot = "0.12"
 divan = { version = "4", package = "codspeed-divan-compat" }
 wasm-bindgen-test = "0.3"
 console_error_panic_hook = "0.1"

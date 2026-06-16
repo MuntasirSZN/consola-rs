@@ -2,7 +2,7 @@
 
 ## Getting Started
 
-**Prerequisites**: Rust 1.96+ (edition 2024), `just` command runner.
+**Prerequisites**: Rust 1.88+ (edition 2024), `just` command runner.
 
 ```bash
 git clone https://github.com/<your-username>/consola-rs

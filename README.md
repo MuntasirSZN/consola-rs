@@ -264,7 +264,7 @@ The crate uses `#![deny(unsafe_code)]` — no `unsafe` in the core library.
 
 ## Minimum Rust Version
 
-Rust 1.96 (edition 2024).
+Rust 1.88.0 (edition 2024).
 
 ## License
 

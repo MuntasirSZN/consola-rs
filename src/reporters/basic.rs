@@ -83,7 +83,7 @@ impl BasicReporter {
             #[cfg(feature = "jiff")]
             {
                 if let Ok(ts) = jiff::Timestamp::from_millisecond(_now_ms) {
-                    let zoned = ts.to_zoned(jiff::tz::TimeZone::system());
+                    let zoned = ts.to_zoned_datetime(jiff::tz::TimeZone::system());
                     let civil = zoned.datetime();
                     let h = civil.hour();
                     let hour12 = match h {

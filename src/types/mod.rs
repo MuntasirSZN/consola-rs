@@ -149,10 +149,10 @@ impl LogObject {
     /// Return the timestamp as a jiff Zoned (feature = "jiff", default).
     /// Returns `None` if the timestamp is invalid.
     #[cfg(feature = "jiff")]
-    pub fn timestamp_jiff(&self) -> Option<jiff::Zoned> {
+    pub fn timestamp_jiff(&self) -> Option<jiff::ZonedDateTime> {
         jiff::Timestamp::from_millisecond(self.timestamp_ms)
             .ok()
-            .map(|ts| ts.to_zoned(jiff::tz::TimeZone::system()))
+            .map(|ts| ts.to_zoned_datetime(jiff::tz::TimeZone::system()))
     }
 
     /// Return the timestamp as a chrono DateTime<Utc> (feature = "chrono").
@@ -173,7 +173,7 @@ impl LogObject {
 /// Get current time in milliseconds since epoch.
 #[cfg(feature = "jiff")]
 pub(crate) fn now_ms() -> i64 {
-    jiff::Zoned::now().timestamp().as_millisecond()
+    jiff::ZonedDateTime::now().timestamp().as_millisecond()
 }
 
 #[cfg(all(feature = "chrono", not(feature = "jiff")))]

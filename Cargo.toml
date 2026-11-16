@@ -21,7 +21,7 @@ parking_lot = { version = "0.12", optional = true }
 anstyle = "1"
 unicode-width = "0.2"
 terminal_size = "0.4"
-jiff = { version = "0.2", optional = true, features = ["js"] }
+jiff = { version = "1", optional = true, features = ["js"] }
 chrono = { version = "0.4", optional = true }
 log = { version = "0.4", optional = true }
 tracing = { version = "0.1", optional = true }
@@ -70,7 +70,7 @@ path = "examples/json.rs"
 
 [dev-dependencies]
 parking_lot = "0.12"
-divan = { version = "5", package = "codspeed-divan-compat" }
+divan = { version = "6", package = "codspeed-divan-compat" }
 wasm-bindgen-test = "0.3"
 console_error_panic_hook = "0.1"
 serde_json = "1"

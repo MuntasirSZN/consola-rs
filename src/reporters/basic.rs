@@ -102,26 +102,7 @@ impl BasicReporter {
                 }
             }
 
-            #[cfg(all(feature = "chrono", not(feature = "jiff")))]
-            {
-                use chrono::Timelike;
-                let local = chrono::Local::now();
-                let h = local.hour12();
-                let hour12 = match h.1 {
-                    0 => 12,
-                    n => n,
-                };
-                let ampm = if h.0 { "PM" } else { "AM" };
-                return format!(
-                    "{}:{:02}:{:02} {}",
-                    hour12,
-                    local.minute(),
-                    local.second(),
-                    ampm
-                );
-            }
-
-            #[cfg(all(feature = "time", not(any(feature = "jiff", feature = "chrono"))))]
+            #[cfg(all(feature = "time", not(feature = "jiff")))]
             {
                 let offset =
                     time::UtcOffset::current_local_offset().unwrap_or(time::UtcOffset::UTC);

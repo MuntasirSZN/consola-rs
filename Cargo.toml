@@ -15,38 +15,18 @@ fail-fast = false
 retries = 1
 junit = { path = "junit.xml" }
 
-[dependencies]
-thiserror = "2"
-parking_lot = { version = "0.12", optional = true }
-anstyle = "1"
-unicode-width = "0.2"
-terminal_size = "0.4"
-jiff = { version = "1", optional = true, features = ["js"] }
-chrono = { version = "0.4", optional = true }
-log = { version = "0.4", optional = true }
-tracing = { version = "0.1", optional = true }
-tracing-core = { version = "0.1", optional = true }
-backtrace = { version = "0.3", optional = true }
-web-sys = { version = "0.3", optional = true, features = ["console", "Window"] }
-wasm-bindgen = { version = "0.2", optional = true }
-demand = { version = "2", optional = true }
-time = { version = "0.3", optional = true, features = ["local-offset"] }
-inquire = { version = "0.9", optional = true }
-dialoguer = { version = "0.12", optional = true }
-
 [features]
-default = ["jiff", "backtrace"]
-jiff = ["dep:jiff"]
-chrono = ["dep:chrono"]
-time = ["dep:time"]
-log = ["dep:log"]
-tracing = ["dep:tracing", "dep:tracing-core"]
+default = ["backtrace", "jiff"]
 backtrace = ["dep:backtrace"]
-browser = ["dep:web-sys", "dep:wasm-bindgen"]
+browser = ["dep:wasm-bindgen", "dep:web-sys"]
+jiff = ["dep:jiff"]
+log = ["dep:log"]
 parking_lot = ["dep:parking_lot"]
 prompt = ["dep:demand"]
-prompt-inquire = ["dep:inquire"]
 prompt-dialoguer = ["dep:dialoguer"]
+prompt-inquire = ["dep:inquire"]
+time = ["dep:time"]
+tracing = ["dep:tracing", "dep:tracing-core"]
 
 [[example]]
 name = "basic"
@@ -68,20 +48,38 @@ path = "examples/custom_reporter.rs"
 name = "json"
 path = "examples/json.rs"
 
+[[bench]]
+harness = false
+name = "log_bench"
+
+[dependencies]
+anstyle = "1"
+backtrace = { version = "0.3", optional = true }
+demand = { version = "2", optional = true }
+dialoguer = { version = "0.12", optional = true }
+inquire = { version = "0.9", optional = true }
+jiff = { version = "1", features = ["js"], optional = true }
+log = { version = "0.4", optional = true }
+parking_lot = { version = "0.12", optional = true }
+terminal_size = "0.4"
+thiserror = "2"
+time = { version = "0.3", features = ["local-offset"], optional = true }
+tracing = { version = "0.1", optional = true }
+tracing-core = { version = "0.1", optional = true }
+unicode-width = "0.2"
+wasm-bindgen = { version = "0.2", optional = true }
+web-sys = { version = "0.3", features = ["Window", "console"], optional = true }
+
 [dev-dependencies]
-parking_lot = "0.12"
-divan = { version = "6", package = "codspeed-divan-compat" }
-wasm-bindgen-test = "0.3"
 console_error_panic_hook = "0.1"
+divan = { package = "codspeed-divan-compat", version = "6" }
+parking_lot = "0.12"
 serde_json = "1"
+wasm-bindgen-test = "0.3"
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 getrandom = { version = "0.2", features = ["js"] }
-getrandom4 = { version = "0.4", features = ["wasm_js"], package = "getrandom" }
-
-[[bench]]
-name = "log_bench"
-harness = false
+getrandom4 = { package = "getrandom", version = "0.4", features = ["wasm_js"] }
 
 [profile.bench]
 lto = true

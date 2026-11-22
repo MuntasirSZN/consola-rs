@@ -244,7 +244,6 @@ let choice = prompt::select("Pick one", &SelectPromptOptions {
 |------------|----------|------------------------------------------------|
 | `jiff`     | yes      | Timestamps via `jiff`                          |
 | `backtrace`| yes      | Error backtrace capture via `backtrace` crate  |
-| `chrono`   | no       | Alternative timestamps via `chrono`            |
 | `time`     | no       | Alternative timestamps via `time`              |
 | `log`      | no       | Implement `log::Log` trait                     |
 | `tracing`  | no       | Implement `tracing::Subscriber`                |

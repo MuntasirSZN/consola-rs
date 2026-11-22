@@ -155,13 +155,6 @@ impl LogObject {
             .map(|ts| ts.to_zoned_datetime(jiff::tz::TimeZone::system()))
     }
 
-    /// Return the timestamp as a chrono DateTime<Utc> (feature = "chrono").
-    /// Returns `None` if the timestamp is invalid.
-    #[cfg(feature = "chrono")]
-    pub fn timestamp_chrono(&self) -> Option<chrono::DateTime<chrono::Utc>> {
-        chrono::DateTime::from_timestamp_millis(self.timestamp_ms)
-    }
-
     /// Return the timestamp as a time::OffsetDateTime (feature = "time").
     /// Returns `None` if the timestamp is invalid.
     #[cfg(feature = "time")]
@@ -176,18 +169,13 @@ pub(crate) fn now_ms() -> i64 {
     jiff::ZonedDateTime::now().timestamp().as_millisecond()
 }
 
-#[cfg(all(feature = "chrono", not(feature = "jiff")))]
-pub(crate) fn now_ms() -> i64 {
-    chrono::Utc::now().timestamp_millis()
-}
-
-#[cfg(all(feature = "time", not(any(feature = "jiff", feature = "chrono"))))]
+#[cfg(all(feature = "time", not(feature = "jiff")))]
 pub(crate) fn now_ms() -> i64 {
     let now = time::OffsetDateTime::now_utc();
     now.unix_timestamp() * 1000 + now.millisecond() as i64
 }
 
-#[cfg(not(any(feature = "jiff", feature = "chrono", feature = "time")))]
+#[cfg(not(any(feature = "jiff", feature = "time")))]
 pub(crate) fn now_ms() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

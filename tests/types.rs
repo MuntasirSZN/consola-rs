@@ -126,14 +126,6 @@ fn log_object_timestamp_jiff() {
     assert!(zoned.is_some());
 }
 
-#[cfg(feature = "chrono")]
-#[test]
-fn log_object_timestamp_chrono() {
-    let obj = LogObject::new(LogType::Info);
-    let dt = obj.timestamp_chrono();
-    assert!(dt.is_some());
-}
-
 // ---------------------------------------------------------------------------
 // ConsolaOptions
 // ---------------------------------------------------------------------------

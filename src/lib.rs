@@ -3,7 +3,6 @@
 //! Features:
 //!   - `jiff` (default): timestamps via jiff
 //!   - `backtrace` (default): error backtrace capture via `backtrace` crate
-//!   - `chrono`: timestamps via chrono
 //!   - `time`: timestamps via time
 //!   - `log`: implement `log::Log` trait (receive from `log` crate)
 //!   - `tracing`: implement `tracing::Subscriber` (receive from `tracing` crate)
